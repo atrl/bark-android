@@ -33,8 +33,9 @@ public class ServerLifecycleWiringTest {
 
         assertTrue(activity.contains("serverNameInput"));
         assertTrue(activity.contains("edit(\"Name\")"));
-        assertTrue(activity.contains("button(\"Rename\")"));
-        assertTrue(activity.contains("button(\"Reset\")"));
+        assertTrue(activity.contains(".setItems(serverActionLabels(profile))"));
+        assertTrue(activity.contains("\"Rename\""));
+        assertTrue(activity.contains("\"Register / Reset Key\""));
         assertTrue(activity.contains("renameServer(profile.id)"));
         assertTrue(activity.contains("resetServer(profile)"));
         assertTrue(activity.contains("deleteServer(profile)"));
@@ -42,6 +43,29 @@ public class ServerLifecycleWiringTest {
         assertTrue(activity.contains("BarkServerClient(profile.address).register(null, settings.installToken)"));
         assertTrue(activity.contains("settings.updateServerKey(profile.id, result.deviceKey)"));
         assertTrue(activity.contains("settings.renameServer(id, serverNameInput.text.toString()"));
+    }
+
+    @Test
+    public void serviceTabExposesServerDialogInsteadOfInlineServerEditor() throws Exception {
+        String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
+
+        assertTrue(activity.contains("private enum class MainTab { SERVICE, HISTORY, SETTINGS }"));
+        assertTrue(activity.contains("button(\"Service\") { showTab(MainTab.SERVICE) }"));
+        assertTrue(activity.contains("button(\"History\") { showTab(MainTab.HISTORY) }"));
+        assertTrue(activity.contains("button(\"Settings\") { showTab(MainTab.SETTINGS) }"));
+        assertTrue(activity.contains("private fun buildServiceTab()"));
+        assertTrue(activity.contains("button(\"Servers\") { showServerPicker() }"));
+        assertTrue(activity.contains("private fun showServerPicker()"));
+        assertTrue(activity.contains("private fun showAddServerDialog()"));
+    }
+
+    @Test
+    public void androidDefaultsToOfficialBarkApi() throws Exception {
+        String settings = readFile("src/main/java/day/bark/android/BarkSettingsStore.kt");
+
+        assertTrue(settings.contains("const val DEFAULT_ANDROID_SERVER = BarkServerProfiles.DEFAULT_ADDRESS"));
+        assertTrue(settings.contains("private const val LEGACY_EMULATOR_SERVER = \"http://10.0.2.2:8080\""));
+        assertTrue(settings.contains("migrateBlankLegacyEmulatorDefault"));
     }
 
     private static String readFile(String path) throws Exception {

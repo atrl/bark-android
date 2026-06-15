@@ -20,15 +20,26 @@ public class MultiServerPollingWiringTest {
     }
 
     @Test
-    public void registerFlowSyncsDeviceTokenToEverySavedServerProfile() throws Exception {
+    public void registerAllFlowSyncsDeviceTokenToEverySavedServerProfile() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
+        assertTrue(activity.contains("private fun registerAllServers()"));
         assertTrue(activity.contains("val profiles = settings.serverProfiles()"));
         assertTrue(activity.contains("for (profile in profiles.profiles)"));
         assertTrue(activity.contains("BarkServerClient(profile.address)"));
         assertTrue(activity.contains("register(profile.key.takeIf { it.isNotBlank() }, settings.installToken)"));
         assertTrue(activity.contains("settings.updateServerKey(profile.id, result.deviceKey)"));
         assertFalse(activity.contains("BarkServerClient(settings.serverUrl)\n                .register(settings.deviceKey, settings.installToken)"));
+    }
+
+    @Test
+    public void servicePrimaryRegisterOnlyRegistersCurrentProfile() throws Exception {
+        String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
+
+        assertTrue(activity.contains("button(\"Register Current Server\") { registerCurrentServer() }"));
+        assertTrue(activity.contains("private fun registerCurrentServer()"));
+        assertTrue(activity.contains("val profile = settings.serverProfiles().current(BarkSettingsStore.DEFAULT_ANDROID_SERVER)"));
+        assertTrue(activity.contains("registerProfile(profile)"));
     }
 
     private static String readFile(String path) throws Exception {

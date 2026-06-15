@@ -25,7 +25,7 @@ public class BatchPushWiringTest {
 
         assertTrue(activity.contains("private lateinit var pushDeviceKeysInput: EditText"));
         assertTrue(activity.contains("pushDeviceKeysInput = edit(\"Device Keys\")"));
-        assertTrue(activity.contains("root.addView(pushDeviceKeysInput)"));
+        assertTrue(activity.contains("contentRoot.addReusableView(pushDeviceKeysInput)"));
         assertTrue(activity.contains("val targetKeys = BarkPushTargetKeys.parse(pushDeviceKeysInput.text.toString()).ifEmpty { listOf(key) }"));
         assertTrue(activity.contains("BarkServerClient(settings.serverUrl).push(targetKeys, request)"));
     }

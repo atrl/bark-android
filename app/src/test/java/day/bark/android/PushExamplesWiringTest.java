@@ -13,7 +13,7 @@ public class PushExamplesWiringTest {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
         assertTrue(activity.contains("private lateinit var exampleList: LinearLayout"));
-        assertTrue(activity.contains("section(\"Examples\")"));
+        assertTrue(activity.contains("serviceRoot.addView(section(\"Examples\"))"));
         assertTrue(activity.contains("refreshExamples()"));
         assertTrue(activity.contains("BarkPushExampleCatalog.examples.forEach"));
         assertTrue(activity.contains("example.url(settings.serverProfiles().current(BarkSettingsStore.DEFAULT_ANDROID_SERVER))"));

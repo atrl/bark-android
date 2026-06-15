@@ -78,7 +78,13 @@ class BarkPollingService : Service() {
                         }
                     } catch (error: InterruptedException) {
                         throw error
-                    } catch (_: Exception) {
+                    } catch (error: Exception) {
+                        if (isMissingAndroidDeviceToken(error)) {
+                            settings.listeningEnabled = false
+                            running = false
+                            stopSelf()
+                            return
+                        }
                         Thread.sleep(1_000)
                     }
                 }
@@ -92,6 +98,12 @@ class BarkPollingService : Service() {
 
     private fun pollTimeoutSeconds(targetCount: Int): Int =
         if (targetCount <= 1) 30 else 5
+
+    private fun isMissingAndroidDeviceToken(error: Exception): Boolean {
+        val message = error.message.orEmpty()
+        return message.contains("failed to get [android] device token", ignoreCase = true) ||
+            message.contains("device is not registered as android", ignoreCase = true)
+    }
 
     private fun handlePayload(payload: Map<String, Any?>) {
         val message = try {
