@@ -34,3 +34,68 @@ The debug APK is generated at:
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## GitHub CI
+
+`Android CI` runs on every push and pull request to `main`. It runs the unit
+tests, builds the debug APK, and uploads `bark-android-debug-apk` as a workflow
+artifact. This workflow does not use signing secrets.
+
+`Android Release` runs from a manual workflow dispatch or a `v*` tag. It builds
+signed release artifacts:
+
+- `bark-android-release-aab`: use this AAB for Google Play. With Play App
+  Signing enabled, the CI keystore is the upload key.
+- `bark-android-release-apk`: use this signed APK for stores or distribution
+  channels that do not accept AAB.
+
+## Release Signing
+
+Create a release/upload key locally:
+
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore bark-release.keystore \
+  -alias bark \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+```
+
+Export the keystore for GitHub Secrets:
+
+```bash
+base64 -i bark-release.keystore | pbcopy
+```
+
+Set these repository secrets in GitHub:
+
+```text
+BARK_ANDROID_KEYSTORE_BASE64
+BARK_ANDROID_KEYSTORE_PASSWORD
+BARK_ANDROID_KEY_ALIAS
+BARK_ANDROID_KEY_PASSWORD
+```
+
+For local signed builds, point Gradle at the same keystore through environment
+variables:
+
+```bash
+export BARK_ANDROID_KEYSTORE_PATH="$PWD/bark-release.keystore"
+export BARK_ANDROID_KEYSTORE_PASSWORD="..."
+export BARK_ANDROID_KEY_ALIAS="bark"
+export BARK_ANDROID_KEY_PASSWORD="..."
+./gradlew --console=plain :app:assembleRelease :app:bundleRelease -x lintVitalAnalyzeRelease
+```
+
+The release workflow skips `lintVitalAnalyzeRelease` during packaging because
+tests run separately and lint-only dependency downloads can be affected by
+Google Maven connectivity. Run lint separately when that dependency path is
+stable.
+
+Google Play expects app identity continuity through app signing. For a new Play
+app, prefer Play App Signing and upload the signed AAB with an upload key. For
+multi-store distribution, keep the app signing key under your control and reuse
+the same signing identity across APK/AAB outputs for every store that needs to
+accept updates to the same package name.
