@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Bark</string>
+    <string name="copy_action">Copy</string>
+    <string name="copied">Copied</string>
+    <string name="shortcut_push_sent">Shortcut push sent</string>
+    <string name="shortcut_push_failed">Shortcut push failed</string>
+    <string name="mute_group_1h">Mute 1h</string>
+    <string name="group_muted">Group "%1$s" muted for 1 hour</string>
+    <string name="widget_empty">No Bark messages</string>
+    <string name="widget_group_title">Choose widget group</string>
+</resources>
