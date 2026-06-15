@@ -47,6 +47,9 @@ public class GitHubActionsReleaseWiringTest {
         assertTrue(workflow.contains("-x lintVitalAnalyzeRelease"));
         assertTrue(workflow.contains("app/build/outputs/bundle/release/*.aab"));
         assertTrue(workflow.contains("app/build/outputs/apk/release/*.apk"));
+        assertTrue(workflow.contains("softprops/action-gh-release"));
+        assertTrue(workflow.contains("app/build/outputs/apk/release/*.apk"));
+        assertTrue(workflow.contains("app/build/outputs/bundle/release/*.aab"));
     }
 
     @Test
