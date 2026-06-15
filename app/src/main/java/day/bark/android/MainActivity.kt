@@ -464,9 +464,9 @@ class MainActivity : Activity() {
             }.onSuccess { result ->
                 runOnUiThread {
                     keyInput.setText(result.deviceKey)
-                    refreshServers()
                     refreshExamples()
-                    status("Registered")
+                    startPollingService()
+                    status("Registered and listening")
                 }
             }.onFailure { error ->
                 runOnUiThread { status(error.message ?: "Registration failed") }
@@ -1064,18 +1064,26 @@ class MainActivity : Activity() {
     private fun startPollingService() {
         saveSettings()
         settings.listeningEnabled = true
-        val intent = Intent(this, BarkPollingService::class.java)
-        if (Build.VERSION.SDK_INT >= 26) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+        try {
+            val intent = Intent(this, BarkPollingService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            refreshServers()
+            status("Listening")
+        } catch (error: Exception) {
+            settings.listeningEnabled = false
+            refreshServers()
+            status(error.message ?: "Failed to start listening")
         }
-        status("Listening")
     }
 
     private fun stopPollingService() {
         settings.listeningEnabled = false
         startService(Intent(this, BarkPollingService::class.java).setAction(BarkPollingService.ACTION_STOP))
+        refreshServers()
         status("Stopped")
     }
 

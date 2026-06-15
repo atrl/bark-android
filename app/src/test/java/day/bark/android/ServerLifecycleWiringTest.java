@@ -68,7 +68,47 @@ public class ServerLifecycleWiringTest {
         assertTrue(settings.contains("migrateBlankLegacyEmulatorDefault"));
     }
 
+    @Test
+    public void registerCurrentServerStartsListeningAfterSuccessfulRegistration() throws Exception {
+        String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
+        String successBlock = between(
+            activity,
+            ".onSuccess { result ->",
+            "}.onFailure { error ->"
+        );
+
+        assertTrue(successBlock.contains("keyInput.setText(result.deviceKey)"));
+        assertTrue(successBlock.contains("startPollingService()"));
+        assertTrue(successBlock.contains("status(\"Registered and listening\")"));
+    }
+
+    @Test
+    public void listeningActionsRefreshServiceSummary() throws Exception {
+        String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
+        String startBlock = between(
+            activity,
+            "private fun startPollingService()",
+            "private fun stopPollingService()"
+        );
+        String stopBlock = between(
+            activity,
+            "private fun stopPollingService()",
+            "private fun refreshHistory()"
+        );
+
+        assertTrue(startBlock.contains("refreshServers()"));
+        assertTrue(stopBlock.contains("refreshServers()"));
+    }
+
     private static String readFile(String path) throws Exception {
         return new String(Files.readAllBytes(Path.of(path)), StandardCharsets.UTF_8);
+    }
+
+    private static String between(String text, String startMarker, String endMarker) {
+        int start = text.indexOf(startMarker);
+        int end = text.indexOf(endMarker, start);
+        assertTrue("missing start marker: " + startMarker, start >= 0);
+        assertTrue("missing end marker: " + endMarker, end > start);
+        return text.substring(start, end);
     }
 }
