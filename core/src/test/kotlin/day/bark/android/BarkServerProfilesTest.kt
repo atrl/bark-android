@@ -67,6 +67,17 @@ class BarkServerProfilesTest {
     }
 
     @Test
+    fun `empty profiles default to official Bark API`() {
+        val state = BarkServerProfiles.empty()
+
+        assertEquals("https://api.day.app", state.current().address)
+        assertEquals(
+            "https://api.day.app/Your%20Key/Custom%20Notification%20Content",
+            BarkPushExampleCatalog.examples.first().url(state.current()),
+        )
+    }
+
+    @Test
     fun `removing current profile selects the first remaining profile`() {
         val state = BarkServerProfiles.empty(defaultAddress = "https://api.day.app")
             .add(BarkServerProfile(id = "custom", address = "https://bark.example", key = "key"))

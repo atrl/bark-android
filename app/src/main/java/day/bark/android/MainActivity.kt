@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -36,6 +37,8 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : Activity() {
+    private enum class MainTab { SERVICE, HISTORY, SETTINGS }
+
     private lateinit var settings: BarkSettingsStore
     private lateinit var store: BarkMessageStore
     private lateinit var serverInput: EditText
@@ -73,12 +76,14 @@ class MainActivity : Activity() {
     private lateinit var ivInput: EditText
     private lateinit var statusText: TextView
     private lateinit var contentScroll: ScrollView
-    private lateinit var serverList: LinearLayout
+    private lateinit var contentRoot: LinearLayout
+    private lateinit var currentServerPanel: LinearLayout
     private lateinit var exampleList: LinearLayout
     private lateinit var soundList: LinearLayout
     private lateinit var historySearchInput: EditText
     private lateinit var historyFilters: LinearLayout
     private lateinit var historyList: LinearLayout
+    private var currentTab = MainTab.SERVICE
     private var selectedHistoryGroups: Set<String?> = emptySet()
     private var historySearchText: String? = null
     private var pendingQrScan = false
@@ -162,41 +167,42 @@ class MainActivity : Activity() {
     }
 
     private fun buildContentView(): View {
-        val root = LinearLayout(this).apply {
+        initializeInputs()
+
+        val outer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(36, 36, 36, 36)
         }
-        contentScroll = ScrollView(this).apply { addView(root) }
 
-        root.addView(title("Bark"))
+        outer.addView(title("Bark"))
+        outer.addView(row(
+            button("Service") { showTab(MainTab.SERVICE) },
+            button("History") { showTab(MainTab.HISTORY) },
+            button("Settings") { showTab(MainTab.SETTINGS) },
+        ))
+
+        statusText = TextView(this).apply { textSize = 14f }
+        outer.addView(statusText)
+
+        contentRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        contentScroll = ScrollView(this).apply { addView(contentRoot) }
+        outer.addView(
+            contentScroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
+
+        showTab(MainTab.SERVICE)
+        return outer
+    }
+
+    private fun initializeInputs() {
         serverInput = edit("Server")
-        root.addView(serverInput)
         keyInput = edit("Key")
-        root.addView(keyInput)
         serverNameInput = edit("Name")
-        root.addView(serverNameInput)
-
-        root.addView(row(
-            button("Register") { registerDevice() },
-            button("Start") { startPollingService() },
-            button("Stop") { stopPollingService() },
-        ))
-        root.addView(row(
-            button("Test") { sendTestPush() },
-            button("Ping") { pingSelectedServer() },
-            button("Add Server") { addServerProfile() },
-        ))
-        root.addView(row(
-            button("Import URL") { importServerLink() },
-            button("Scan QR") { scanQrCode() },
-        ))
-        root.addView(row(
-            button("Clear") {
-                clearHistory(BarkHistoryDeleteRange.ALL_TIME)
-            },
-        ))
-
-        root.addView(section("Push"))
         pushTitleInput = edit("Title")
         pushSubtitleInput = edit("Subtitle")
         pushDeviceKeysInput = edit("Device Keys")
@@ -221,83 +227,75 @@ class MainActivity : Activity() {
         pushCriticalCheck = CheckBox(this).apply { text = "Critical" }
         pushAutoCopyCheck = CheckBox(this).apply { text = "Auto Copy" }
         pushDeleteCheck = CheckBox(this).apply { text = "Delete" }
-        root.addView(row(pushTitleInput, pushSubtitleInput))
-        root.addView(pushDeviceKeysInput)
-        root.addView(pushBodyInput)
-        root.addView(pushIdInput)
-        root.addView(pushMarkdownInput)
-        root.addView(row(pushSoundInput, pushLevelInput))
-        root.addView(row(pushVolumeInput, pushBadgeInput))
-        root.addView(row(pushIconInput, pushImageInput))
-        root.addView(pushUrlInput)
-        root.addView(pushActionInput)
-        root.addView(row(pushCiphertextInput, pushIvInput))
-        root.addView(pushGroupInput)
-        root.addView(pushCopyInput)
-        root.addView(row(pushArchiveInput, pushTtlInput))
-        root.addView(row(pushCallCheck, pushCriticalCheck, pushAutoCopyCheck, pushDeleteCheck))
-        root.addView(row(
-            button("Send Push") { sendCustomPush() },
-        ))
 
-        root.addView(section("Servers"))
-        serverList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(serverList)
-
-        root.addView(section("Examples"))
         exampleList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(exampleList)
 
         archiveCheck = CheckBox(this).apply { text = "Archive" }
-        root.addView(archiveCheck)
 
-        root.addView(section("Crypto"))
         algorithmInput = edit("Algorithm")
         modeInput = edit("Mode")
         paddingInput = edit("Padding")
         cryptoKeyInput = edit("Key")
         ivInput = edit("IV")
-        root.addView(row(algorithmInput, modeInput, paddingInput))
-        root.addView(cryptoKeyInput)
-        root.addView(ivInput)
-        root.addView(row(
-            button("Save") { saveSettings() },
-            button("Copy Example") { copyCryptoExample() },
-        ))
 
-        statusText = TextView(this).apply { textSize = 14f }
-        root.addView(statusText)
-
-        root.addView(section("Info"))
-        root.addView(TextView(this).apply {
-            textSize = 14f
-            text = "Device Token\n${BarkDeviceTokenText.mask(settings.installToken)}"
-        })
-        root.addView(row(
-            button("Copy Token") { copyDeviceToken() },
-        ))
-        root.addView(row(
-            button("FAQ") { openExternalUrl(BARK_FAQ_URL) },
-            button("Documentation") { openExternalUrl(BARK_DOC_URL) },
-        ))
-        root.addView(row(
-            button("Source Code") { openExternalUrl(BARK_SOURCE_URL) },
-            button("Privacy Policy") { openExternalUrl(BARK_PRIVACY_URL) },
-        ))
-
-        root.addView(section("Sounds"))
-        root.addView(button("Import Sound") { startSoundImport() })
         soundList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(soundList)
 
-        root.addView(section("History"))
-        root.addView(row(
+        historySearchInput = edit("Search history")
+        historyFilters = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        historyList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    }
+
+    private fun showTab(tab: MainTab) {
+        currentTab = tab
+        contentRoot.removeAllViews()
+        when (tab) {
+            MainTab.SERVICE -> buildServiceTab()
+            MainTab.HISTORY -> buildHistoryTab()
+            MainTab.SETTINGS -> buildSettingsTab()
+        }
+    }
+
+    private fun buildServiceTab() {
+        val serviceRoot = contentRoot
+        currentServerPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 18, 0, 18)
+        }
+        serviceRoot.addView(currentServerPanel)
+        serviceRoot.addView(row(
+            button("Register Current Server") { registerCurrentServer() },
+            button("Start Listening") { startPollingService() },
+            button("Stop Listening") { stopPollingService() },
+        ))
+        serviceRoot.addView(row(
+            button("Copy Push URL") { copyCurrentPushUrl() },
+            button("Ping") { pingSelectedServer() },
+            button("Servers") { showServerPicker() },
+        ))
+        serviceRoot.addView(row(
+            button("Add Server") { showAddServerDialog() },
+            button("Import URL") { importServerLink() },
+            button("Scan QR") { scanQrCode() },
+        ))
+        serviceRoot.addView(row(
+            button("Register All") { registerAllServers() },
+            button("Test") { sendTestPush() },
+        ))
+        serviceRoot.addView(section("Examples"))
+        exampleList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        serviceRoot.addView(exampleList)
+        refreshServiceSummary()
+        refreshExamples()
+    }
+
+    private fun buildHistoryTab() {
+        contentRoot.addView(section("History"))
+        contentRoot.addView(row(
             button("Export History") { exportHistory() },
             button("Import History") { startHistoryImport() },
         ))
-        historySearchInput = edit("Search history")
-        root.addView(historySearchInput)
-        root.addView(row(
+        contentRoot.addReusableView(historySearchInput)
+        contentRoot.addView(row(
             button("Search") {
                 historySearchText = historySearchInput.text.toString().takeIf { it.isNotBlank() }
                 selectedHistoryGroups = emptySet()
@@ -310,26 +308,93 @@ class MainActivity : Activity() {
                 refreshHistory()
             },
         ))
-        root.addView(row(
+        contentRoot.addView(row(
             button("Clear 1h") { clearHistory(BarkHistoryDeleteRange.LAST_HOUR) },
             button("Clear Today") { clearHistory(BarkHistoryDeleteRange.TODAY) },
             button("Clear Today+Yesterday") { clearHistory(BarkHistoryDeleteRange.TODAY_AND_YESTERDAY) },
         ))
-        root.addView(row(
+        contentRoot.addView(row(
             button("Clear Month") { clearHistory(BarkHistoryDeleteRange.LAST_MONTH) },
             button("Before 1h") { clearHistory(BarkHistoryDeleteRange.BEFORE_ONE_HOUR) },
             button("Before Today") { clearHistory(BarkHistoryDeleteRange.BEFORE_TODAY) },
         ))
-        root.addView(row(
+        contentRoot.addView(row(
             button("Before Yesterday") { clearHistory(BarkHistoryDeleteRange.BEFORE_YESTERDAY) },
             button("Clear Old") { clearHistory(BarkHistoryDeleteRange.BEFORE_ONE_MONTH) },
             button("Clear All") { clearHistory(BarkHistoryDeleteRange.ALL_TIME) },
         ))
         historyFilters = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(historyFilters)
+        contentRoot.addView(historyFilters)
         historyList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(historyList)
-        return contentScroll
+        contentRoot.addView(historyList)
+        refreshHistory()
+    }
+
+    private fun buildSettingsTab() {
+        contentRoot.addView(section("Server"))
+        contentRoot.addReusableView(serverInput)
+        contentRoot.addReusableView(keyInput)
+        contentRoot.addReusableView(serverNameInput)
+        contentRoot.addView(row(
+            button("Save") { saveSettings() },
+            button("Add Server") { addServerProfile() },
+            button("Check") { pingSelectedServer() },
+        ))
+
+        contentRoot.addView(section("Push"))
+        contentRoot.addView(row(pushTitleInput, pushSubtitleInput))
+        contentRoot.addReusableView(pushDeviceKeysInput)
+        contentRoot.addReusableView(pushBodyInput)
+        contentRoot.addReusableView(pushIdInput)
+        contentRoot.addReusableView(pushMarkdownInput)
+        contentRoot.addView(row(pushSoundInput, pushLevelInput))
+        contentRoot.addView(row(pushVolumeInput, pushBadgeInput))
+        contentRoot.addView(row(pushIconInput, pushImageInput))
+        contentRoot.addReusableView(pushUrlInput)
+        contentRoot.addReusableView(pushActionInput)
+        contentRoot.addView(row(pushCiphertextInput, pushIvInput))
+        contentRoot.addReusableView(pushGroupInput)
+        contentRoot.addReusableView(pushCopyInput)
+        contentRoot.addView(row(pushArchiveInput, pushTtlInput))
+        contentRoot.addView(row(pushCallCheck, pushCriticalCheck, pushAutoCopyCheck, pushDeleteCheck))
+        contentRoot.addView(row(
+            button("Send Push") { sendCustomPush() },
+        ))
+
+        contentRoot.addView(section("Archive"))
+        contentRoot.addReusableView(archiveCheck)
+
+        contentRoot.addView(section("Crypto"))
+        contentRoot.addView(row(algorithmInput, modeInput, paddingInput))
+        contentRoot.addReusableView(cryptoKeyInput)
+        contentRoot.addReusableView(ivInput)
+        contentRoot.addView(row(
+            button("Save Crypto") { saveSettings() },
+            button("Copy Example") { copyCryptoExample() },
+        ))
+
+        contentRoot.addView(section("Info"))
+        contentRoot.addView(TextView(this).apply {
+            textSize = 14f
+            text = "Device Token\n${BarkDeviceTokenText.mask(settings.installToken)}"
+        })
+        contentRoot.addView(row(
+            button("Copy Token") { copyDeviceToken() },
+        ))
+        contentRoot.addView(row(
+            button("FAQ") { openExternalUrl(BARK_FAQ_URL) },
+            button("Documentation") { openExternalUrl(BARK_DOC_URL) },
+        ))
+        contentRoot.addView(row(
+            button("Source Code") { openExternalUrl(BARK_SOURCE_URL) },
+            button("Privacy Policy") { openExternalUrl(BARK_PRIVACY_URL) },
+        ))
+
+        contentRoot.addView(section("Sounds"))
+        contentRoot.addView(button("Import Sound") { startSoundImport() })
+        soundList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        contentRoot.addView(soundList)
+        refreshSounds()
     }
 
     private fun loadSettings() {
@@ -386,8 +451,32 @@ class MainActivity : Activity() {
     }
 
     private fun registerDevice() {
+        registerAllServers()
+    }
+
+    private fun registerCurrentServer() {
         saveSettings()
         status("Registering")
+        background {
+            val profile = settings.serverProfiles().current(BarkSettingsStore.DEFAULT_ANDROID_SERVER)
+            runCatching {
+                registerProfile(profile)
+            }.onSuccess { result ->
+                runOnUiThread {
+                    keyInput.setText(result.deviceKey)
+                    refreshServers()
+                    refreshExamples()
+                    status("Registered")
+                }
+            }.onFailure { error ->
+                runOnUiThread { status(error.message ?: "Registration failed") }
+            }
+        }
+    }
+
+    private fun registerAllServers() {
+        saveSettings()
+        status("Registering all servers")
         background {
             val profiles = settings.serverProfiles()
             var currentKey: String? = null
@@ -395,10 +484,8 @@ class MainActivity : Activity() {
             val failures = mutableListOf<String>()
             for (profile in profiles.profiles) {
                 runCatching {
-                    BarkServerClient(profile.address)
-                        .register(profile.key.takeIf { it.isNotBlank() }, settings.installToken)
+                    registerProfile(profile)
                 }.onSuccess { result ->
-                    settings.updateServerKey(profile.id, result.deviceKey)
                     registeredCount += 1
                     if (profile.id == profiles.currentId) {
                         currentKey = result.deviceKey
@@ -420,6 +507,13 @@ class MainActivity : Activity() {
                 )
             }
         }
+    }
+
+    private fun registerProfile(profile: BarkServerProfile): RegistrationResult {
+        val result = BarkServerClient(profile.address)
+            .register(profile.key.takeIf { it.isNotBlank() }, settings.installToken)
+        settings.updateServerKey(profile.id, result.deviceKey)
+        return result
     }
 
     private fun addServerProfile() {
@@ -491,6 +585,7 @@ class MainActivity : Activity() {
             uri.getQueryParameter("group")
                 ?.let(BarkHistoryView::normalizeGroup)
                 ?.let { group -> selectedHistoryGroups = setOf(group) }
+            showTab(MainTab.HISTORY)
             refreshHistory()
             contentScroll.post { contentScroll.fullScroll(View.FOCUS_DOWN) }
             return true
@@ -569,43 +664,120 @@ class MainActivity : Activity() {
     }
 
     private fun refreshServers() {
-        serverList.removeAllViews()
+        refreshServiceSummary()
+    }
+
+    private fun refreshServiceSummary() {
+        if (!::currentServerPanel.isInitialized) return
+        currentServerPanel.removeAllViews()
         val profiles = settings.serverProfiles().normalized(BarkSettingsStore.DEFAULT_ANDROID_SERVER)
-        profiles.profiles.forEach { profile ->
-            val selected = profile.id == profiles.currentId
-            val item = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(0, 12, 0, 12)
+        val profile = profiles.current(BarkSettingsStore.DEFAULT_ANDROID_SERVER)
+        currentServerPanel.addView(TextView(this).apply {
+            textSize = 18f
+            text = profile.displayName
+        })
+        currentServerPanel.addView(TextView(this).apply {
+            textSize = 14f
+            text = buildString {
+                append(profile.address)
+                append("\nKey: ")
+                append(profile.key.takeIf { it.isNotBlank() }?.let(BarkDeviceTokenText::mask) ?: "Not registered")
+                append("\nListening: ")
+                append(if (settings.listeningEnabled) "On" else "Off")
             }
-            item.addView(TextView(this).apply {
-                textSize = 14f
-                text = buildString {
-                    append(if (selected) "* " else "")
-                    append(profile.displayName)
-                    if (profile.key.isNotBlank()) append("\n").append(profile.key)
+        })
+    }
+
+    private fun copyCurrentPushUrl() {
+        val profile = settings.serverProfiles().current(BarkSettingsStore.DEFAULT_ANDROID_SERVER)
+        copyText(profile.pushBaseUrl)
+        status("Copied push URL")
+    }
+
+    private fun showServerPicker() {
+        val profiles = settings.serverProfiles().normalized(BarkSettingsStore.DEFAULT_ANDROID_SERVER)
+        val labels = profiles.profiles.map { profile ->
+            if (profile.id == profiles.currentId) "* ${profile.displayName}" else profile.displayName
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Servers")
+            .setItems(labels) { _, index ->
+                showServerActions(profiles.profiles[index])
+            }
+            .setPositiveButton("Add Server") { _, _ -> showAddServerDialog() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showServerActions(profile: BarkServerProfile) {
+        AlertDialog.Builder(this)
+            .setTitle(profile.displayName)
+            .setItems(serverActionLabels(profile)) { _, index ->
+                when (serverActionLabels(profile)[index]) {
+                    "Use" -> {
+                        settings.selectServer(profile.id)
+                        loadSettings()
+                        refreshServers()
+                        refreshExamples()
+                        status("Selected ${profile.address}")
+                    }
+                    "Copy Address and Key" -> {
+                        copyText(profile.pushBaseUrl)
+                        status("Copied")
+                    }
+                    "Check" -> pingServer(profile.address)
+                    "Rename" -> renameServer(profile.id)
+                    "Register / Reset Key" -> resetServer(profile)
+                    "Delete" -> deleteServer(profile)
                 }
-            })
-            item.addView(row(
-                button("Use") {
-                    settings.selectServer(profile.id)
-                    loadSettings()
-                    refreshServers()
-                    status("Selected ${profile.address}")
-                },
-                button("Check") { pingServer(profile.address) },
-                button("Rename") { renameServer(profile.id) },
-                button("Reset") { resetServer(profile) },
-            ))
-            item.addView(row(
-                button("Copy") {
-                    copyText(profile.pushBaseUrl)
-                    status("Copied")
-                },
-                button("Delete") {
-                    deleteServer(profile)
-                },
-            ))
-            serverList.addView(item)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun serverActionLabels(profile: BarkServerProfile): Array<String> =
+        arrayOf(
+            "Use",
+            "Copy Address and Key",
+            "Check",
+            "Rename",
+            "Register / Reset Key",
+            "Delete",
+        )
+
+    private fun showAddServerDialog() {
+        val addressInput = edit("Server").apply { setText("https://") }
+        val nameInput = edit("Name")
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(36, 12, 36, 0)
+            addView(addressInput)
+            addView(nameInput)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Add Server")
+            .setView(form)
+            .setPositiveButton("Add") { _, _ ->
+                val address = addressInput.text.toString()
+                val name = nameInput.text.toString().takeIf { it.isNotBlank() }
+                addServerProfile(address, name)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun addServerProfile(address: String, name: String?) {
+        status("Checking $address")
+        background {
+            val online = BarkServerClient(address).ping()
+            if (!online) error("Invalid server")
+            val profile = settings.addServer(address = address, key = null, name = name)
+            runOnUiThread {
+                loadSettings()
+                refreshServers()
+                refreshExamples()
+                status("Added ${profile.address}")
+            }
         }
     }
 
@@ -754,10 +926,20 @@ class MainActivity : Activity() {
         resources.getIdentifier(soundName, "raw", packageName)
 
     private fun renameServer(id: String) {
-        settings.renameServer(id, serverNameInput.text.toString().takeIf { it.isNotBlank() })
-        loadSettings()
-        refreshServers()
-        status("Renamed")
+        val profile = settings.serverProfiles().profiles.firstOrNull { it.id == id }
+        serverNameInput.setText(profile?.name.orEmpty())
+        serverNameInput.detachFromParent()
+        AlertDialog.Builder(this)
+            .setTitle("Rename")
+            .setView(serverNameInput)
+            .setPositiveButton("Save") { _, _ ->
+                settings.renameServer(id, serverNameInput.text.toString().takeIf { it.isNotBlank() })
+                loadSettings()
+                refreshServers()
+                status("Renamed")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun resetServer(profile: BarkServerProfile) {
@@ -789,6 +971,7 @@ class MainActivity : Activity() {
             runOnUiThread {
                 loadSettings()
                 refreshServers()
+                refreshExamples()
                 status("Deleted")
             }
         }
@@ -1252,9 +1435,19 @@ class MainActivity : Activity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             views.forEach { view ->
+                view.detachFromParent()
                 addView(view, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             }
         }
+
+    private fun LinearLayout.addReusableView(view: View) {
+        view.detachFromParent()
+        addView(view)
+    }
+
+    private fun View.detachFromParent() {
+        (parent as? ViewGroup)?.removeView(this)
+    }
 
     companion object {
         const val ACTION_SHOW_MESSAGE_ALERT = "day.bark.android.action.SHOW_MESSAGE_ALERT"

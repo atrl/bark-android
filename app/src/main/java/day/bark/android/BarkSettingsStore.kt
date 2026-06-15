@@ -72,14 +72,36 @@ class BarkSettingsStore(context: Context) {
     fun serverProfiles(): BarkServerProfiles {
         val json = prefs.getString("server_profiles", null)
         if (!json.isNullOrBlank()) {
-            return BarkServerProfiles.fromJson(json, defaultAddress = DEFAULT_ANDROID_SERVER)
+            val decoded = BarkServerProfiles.fromJson(json, defaultAddress = DEFAULT_ANDROID_SERVER)
+            val migrated = migrateBlankLegacyEmulatorDefault(decoded)
+            if (migrated != decoded) {
+                saveServerProfiles(migrated)
+            }
+            return migrated
         }
 
         val legacyAddress = prefs.getString("server_url", DEFAULT_ANDROID_SERVER) ?: DEFAULT_ANDROID_SERVER
         val legacyKey = prefs.getString("device_key", null).orEmpty()
-        return BarkServerProfiles.empty(defaultAddress = legacyAddress)
-            .updateCurrent(legacyAddress, legacyKey, defaultAddress = legacyAddress)
+        val defaultAddress = if (legacyAddress == LEGACY_EMULATOR_SERVER && legacyKey.isBlank()) {
+            DEFAULT_ANDROID_SERVER
+        } else {
+            legacyAddress
+        }
+        return BarkServerProfiles.empty(defaultAddress = defaultAddress)
+            .updateCurrent(defaultAddress, legacyKey, defaultAddress = defaultAddress)
             .also(::saveServerProfiles)
+    }
+
+    private fun migrateBlankLegacyEmulatorDefault(profiles: BarkServerProfiles): BarkServerProfiles {
+        val normalized = profiles.normalized(DEFAULT_ANDROID_SERVER)
+        val migratedProfiles = normalized.profiles.map { profile ->
+            if (profile.address == LEGACY_EMULATOR_SERVER && profile.key.isBlank() && profile.name.isNullOrBlank()) {
+                profile.copy(address = DEFAULT_ANDROID_SERVER)
+            } else {
+                profile
+            }
+        }
+        return normalized.copy(profiles = migratedProfiles).normalized(DEFAULT_ANDROID_SERVER)
     }
 
     fun saveCurrentServer(address: String, key: String?) {
@@ -157,7 +179,8 @@ class BarkSettingsStore(context: Context) {
     private fun groupMuteKey(group: String): String = "$GROUP_MUTE_PREFIX$group"
 
     companion object {
-        const val DEFAULT_ANDROID_SERVER = "http://10.0.2.2:8080"
+        const val DEFAULT_ANDROID_SERVER = BarkServerProfiles.DEFAULT_ADDRESS
+        private const val LEGACY_EMULATOR_SERVER = "http://10.0.2.2:8080"
         const val GROUP_MUTE_DURATION_MILLIS = 60L * 60L * 1000L
         private const val GROUP_MUTE_PREFIX = "group_mute_until_"
     }

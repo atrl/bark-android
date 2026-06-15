@@ -44,6 +44,15 @@ public class PollingPersistenceWiringTest {
         assertTrue(receiver.contains("startForegroundService"));
     }
 
+    @Test
+    public void pollingServiceStopsRetryLoopWhenOfficialAndroidTokenIsMissing() throws Exception {
+        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+
+        assertTrue(service.contains("isMissingAndroidDeviceToken(error)"));
+        assertTrue(service.contains("settings.listeningEnabled = false"));
+        assertTrue(service.contains("stopSelf()"));
+    }
+
     private static String readFile(String path) throws Exception {
         return new String(Files.readAllBytes(Path.of(path)), StandardCharsets.UTF_8);
     }
