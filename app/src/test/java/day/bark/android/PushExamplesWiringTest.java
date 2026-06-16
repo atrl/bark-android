@@ -12,13 +12,13 @@ public class PushExamplesWiringTest {
     public void mainActivityExposesPushExamplesFromCatalog() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("private lateinit var exampleList: LinearLayout"));
-        assertTrue(activity.contains("serviceRoot.addView(section(\"Examples\"))"));
+        assertTrue(activity.contains("ExamplesPanel()"));
+        assertTrue(activity.contains("SectionCard(\"Examples\")"));
         assertTrue(activity.contains("refreshExamples()"));
         assertTrue(activity.contains("BarkPushExampleCatalog.examples.forEach"));
         assertTrue(activity.contains("example.url(settings.serverProfiles().current(BarkSettingsStore.DEFAULT_ANDROID_SERVER))"));
-        assertTrue(activity.contains("button(\"Copy\") { copyPushExample(example) }"));
-        assertTrue(activity.contains("button(\"Open\") { openPushExample(example) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Copy\") { copyPushExample(example) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Open\") { openPushExample(example) }"));
         assertTrue(activity.contains("private fun copyPushExample(example: BarkPushExample)"));
         assertTrue(activity.contains("private fun openPushExample(example: BarkPushExample)"));
     }

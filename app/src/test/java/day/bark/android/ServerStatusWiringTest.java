@@ -21,22 +21,22 @@ public class ServerStatusWiringTest {
     }
 
     @Test
-    public void clientSendsBasicAuthHeaderForCredentialedServerUrls() throws Exception {
+    public void clientDoesNotSendBasicAuthHeaderForServerUrls() throws Exception {
         String client = readFile("src/main/java/day/bark/android/BarkServerClient.kt");
 
         assertTrue(client.contains("endpoint.baseUrl.trimEnd('/')"));
-        assertTrue(client.contains("endpoint.authorizationHeader?.let {"));
-        assertTrue(client.contains("setRequestProperty(\"Authorization\", it)"));
+        assertTrue(!client.contains("authorizationHeader"));
+        assertTrue(!client.contains("setRequestProperty(\"Authorization\""));
     }
 
     @Test
     public void mainActivityExposesSelectedAndListedServerChecks() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("button(\"Ping\") { pingSelectedServer() }"));
+        assertTrue(activity.contains("SecondaryAction(\"Ping\") { pingSelectedServer() }"));
         assertTrue(activity.contains("private fun pingSelectedServer()"));
         assertTrue(activity.contains("private fun pingServer(address: String)"));
-        assertTrue(activity.contains("button(\"Check\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Check\")"));
         assertTrue(activity.contains("BarkServerClient(address).ping()"));
         assertTrue(activity.contains("status(\"Online $address\")"));
         assertTrue(activity.contains("status(\"Offline $address"));

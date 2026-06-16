@@ -27,7 +27,7 @@ public class QrScannerWiringTest {
     public void mainActivityLaunchesQrScannerAndImportsScannedContents() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("button(\"Scan QR\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Scan QR\") { scanQrCode() }"));
         assertTrue(activity.contains("CAMERA_PERMISSION_REQUEST"));
         assertTrue(activity.contains("requestPermissions(arrayOf(Manifest.permission.CAMERA)"));
         assertTrue(activity.contains("onRequestPermissionsResult"));

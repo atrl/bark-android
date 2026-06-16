@@ -24,16 +24,16 @@ public class CustomSoundImportWiringTest {
     public void mainActivityExposesCustomSoundImportPlayCopyAndDelete() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("button(\"Import Sound\") { startSoundImport() }"));
+        assertTrue(activity.contains("PrimaryAction(\"Import Sound\") { startSoundImport() }"));
         assertTrue(activity.contains("SOUND_IMPORT_REQUEST"));
         assertTrue(activity.contains("Intent(Intent.ACTION_OPEN_DOCUMENT)"));
         assertTrue(activity.contains("setType(\"audio/*\")"));
         assertTrue(activity.contains("val uri = data?.data"));
         assertTrue(activity.contains("importCustomSound(uri)"));
-        assertTrue(activity.contains("BarkCustomSoundStore(this).list().forEach"));
-        assertTrue(activity.contains("button(\"Play\") { playCustomSound(sound) }"));
-        assertTrue(activity.contains("button(\"Copy\") { copySoundName(sound.name) }"));
-        assertTrue(activity.contains("button(\"Delete\") { deleteCustomSound(sound) }"));
+        assertTrue(activity.contains("BarkCustomSoundStore(this@MainActivity).list()"));
+        assertTrue(activity.contains("SecondaryAction(\"Play\") { playCustomSound(sound) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Copy\") { copySoundName(sound.name) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Delete\") { deleteCustomSound(sound) }"));
         assertTrue(activity.contains("MediaPlayer.create(this, Uri.fromFile(sound.file))"));
     }
 

@@ -12,12 +12,12 @@ public class SoundCatalogWiringTest {
     public void mainActivityExposesBuiltInSoundListWithPlayAndCopyActions() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("soundList"));
-        assertTrue(activity.contains("section(\"Sounds\")"));
+        assertTrue(activity.contains("SoundsPanel("));
+        assertTrue(activity.contains("SectionCard(\"Sounds\")"));
         assertTrue(activity.contains("refreshSounds()"));
         assertTrue(activity.contains("BarkSoundCatalog.builtInSounds.forEach"));
-        assertTrue(activity.contains("button(\"Play\") { playSound(sound.name) }"));
-        assertTrue(activity.contains("button(\"Copy\") { copySoundName(sound.name) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Play\") { playSound(sound.name) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Copy\") { copySoundName(sound.name) }"));
         assertTrue(activity.contains("private fun copySoundName(soundName: String)"));
         assertTrue(activity.contains("copyText(soundName)"));
         assertTrue(activity.contains("private fun playSound(soundName: String)"));

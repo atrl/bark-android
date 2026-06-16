@@ -22,10 +22,10 @@ class BarkServerLinkParserTest {
     }
 
     @Test
-    fun `parses credentialed self hosted push url without dropping basic auth user info`() {
+    fun `parses credentialed self hosted push url by stripping user info`() {
         val link = BarkServerLinkParser.parse("https://bark-user:bark-pass@push.example.com/bark/abc123?title=Hi")
 
-        assertEquals("https://bark-user:bark-pass@push.example.com/bark", link?.address)
+        assertEquals("https://push.example.com/bark", link?.address)
         assertEquals("abc123", link?.key)
     }
 
@@ -62,10 +62,10 @@ class BarkServerLinkParserTest {
     }
 
     @Test
-    fun `parses credentialed self hosted push url with generated key and body path`() {
+    fun `parses credentialed self hosted push url with generated key by stripping user info`() {
         val link = BarkServerLinkParser.parse("https://bark%40user:pa%3Ass@push.example.com/bark/ynJ5Ft4atkMkWeo2PAvFhF/body")
 
-        assertEquals("https://bark%40user:pa%3Ass@push.example.com/bark", link?.address)
+        assertEquals("https://push.example.com/bark", link?.address)
         assertEquals("ynJ5Ft4atkMkWeo2PAvFhF", link?.key)
     }
 

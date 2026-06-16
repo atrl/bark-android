@@ -24,8 +24,8 @@ public class HistoryBackupWiringTest {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
         assertTrue(activity.contains("HISTORY_IMPORT_REQUEST"));
-        assertTrue(activity.contains("button(\"Export History\") { exportHistory() }"));
-        assertTrue(activity.contains("button(\"Import History\") { startHistoryImport() }"));
+        assertTrue(activity.contains("SecondaryAction(\"Export\") { exportHistory() }"));
+        assertTrue(activity.contains("SecondaryAction(\"Import\") { startHistoryImport() }"));
         assertTrue(activity.contains("Intent(Intent.ACTION_OPEN_DOCUMENT)"));
         assertTrue(activity.contains("setType(\"application/json\")"));
         assertTrue(activity.contains("store.exportBackupJson()"));

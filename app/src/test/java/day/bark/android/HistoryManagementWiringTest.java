@@ -33,21 +33,20 @@ public class HistoryManagementWiringTest {
     public void mainActivityExposesSearchAndRangeClearControls() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("historySearchInput"));
-        assertTrue(activity.contains("edit(\"Search history\")"));
-        assertTrue(activity.contains("button(\"Search\")"));
-        assertTrue(activity.contains("button(\"Reset\")"));
-        assertTrue(activity.contains("button(\"Clear 1h\")"));
-        assertTrue(activity.contains("button(\"Clear Today\")"));
-        assertTrue(activity.contains("button(\"Clear Today+Yesterday\")"));
-        assertTrue(activity.contains("button(\"Clear Month\")"));
-        assertTrue(activity.contains("button(\"Before 1h\")"));
-        assertTrue(activity.contains("button(\"Before Today\")"));
-        assertTrue(activity.contains("button(\"Before Yesterday\")"));
-        assertTrue(activity.contains("button(\"Clear Old\")"));
-        assertTrue(activity.contains("button(\"Clear All\")"));
-        assertTrue(activity.contains("button(\"Clear Group\") { clearHistoryGroup(group.group) }"));
-        assertTrue(activity.contains("button(\"Clear Group\") { clearHistoryGroup(selectedHistoryGroups.first()) }"));
+        assertTrue(activity.contains("historySearchInputText"));
+        assertTrue(activity.contains("Field(\"Search history\", historySearchInputText)"));
+        assertTrue(activity.contains("PrimaryAction(\"Search\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Reset\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear 1h\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear Today\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Today+Yesterday\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear Month\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Before 1h\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Before Today\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Before Yesterday\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear Old\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear All\")"));
+        assertTrue(activity.contains("SecondaryAction(\"Clear Group\") { clearHistoryGroup(selectedHistoryGroups.first()) }"));
         assertTrue(activity.contains("clearHistory(BarkHistoryDeleteRange.LAST_HOUR)"));
         assertTrue(activity.contains("clearHistory(BarkHistoryDeleteRange.TODAY)"));
         assertTrue(activity.contains("clearHistory(BarkHistoryDeleteRange.TODAY_AND_YESTERDAY)"));

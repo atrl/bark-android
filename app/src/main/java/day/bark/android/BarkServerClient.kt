@@ -114,9 +114,6 @@ class BarkServerClient(private val serverUrl: String) {
         val base = endpoint.baseUrl.trimEnd('/')
         return (URL(base + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
-            endpoint.authorizationHeader?.let {
-                setRequestProperty("Authorization", it)
-            }
             connectTimeout = 10_000
             readTimeout = 35_000
         }

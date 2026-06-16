@@ -23,10 +23,9 @@ public class BatchPushWiringTest {
     public void composerAcceptsOptionalBatchTargetKeys() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("private lateinit var pushDeviceKeysInput: EditText"));
-        assertTrue(activity.contains("pushDeviceKeysInput = edit(\"Device Keys\")"));
-        assertTrue(activity.contains("contentRoot.addReusableView(pushDeviceKeysInput)"));
-        assertTrue(activity.contains("val targetKeys = BarkPushTargetKeys.parse(pushDeviceKeysInput.text.toString()).ifEmpty { listOf(key) }"));
+        assertTrue(activity.contains("private var pushDeviceKeysText by mutableStateOf(\"\")"));
+        assertTrue(activity.contains("Field(\"Device Keys\", pushDeviceKeysText)"));
+        assertTrue(activity.contains("val targetKeys = BarkPushTargetKeys.parse(pushDeviceKeysText).ifEmpty { listOf(key) }"));
         assertTrue(activity.contains("BarkServerClient(settings.serverUrl).push(targetKeys, request)"));
     }
 

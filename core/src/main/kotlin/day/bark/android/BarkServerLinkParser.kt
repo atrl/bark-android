@@ -62,10 +62,9 @@ object BarkServerLinkParser {
     }
 
     private fun buildBaseAddress(uri: URI, pathPrefix: String?): String {
-        val userInfo = uri.rawUserInfo?.takeIf { it.isNotBlank() }?.let { "$it@" }.orEmpty()
         val port = if (uri.port >= 0) ":${uri.port}" else ""
         val path = pathPrefix.orEmpty()
-        return "${uri.scheme.lowercase()}://$userInfo${uri.host}$port$path".trimEnd('/')
+        return "${uri.scheme.lowercase()}://${uri.host}$port$path".trimEnd('/')
     }
 
     private fun queryParam(uri: URI, name: String): String? =

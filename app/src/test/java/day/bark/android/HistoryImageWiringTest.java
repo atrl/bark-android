@@ -14,13 +14,14 @@ public class HistoryImageWiringTest {
 
         assertTrue(activity.contains("import android.widget.ImageView"));
         assertTrue(activity.contains("message.image?.takeIf { it.isNotBlank() }?.let { imageUrl ->"));
-        assertTrue(activity.contains("ImageView(this@MainActivity)"));
-        assertTrue(activity.contains("loadHistoryImage(imageUrl, imageView)"));
+        assertTrue(activity.contains("AndroidView("));
+        assertTrue(activity.contains("ImageView(context).apply"));
+        assertTrue(activity.contains("loadHistoryImage(imageUrl, this)"));
         assertTrue(activity.contains("BarkRemoteImageCache(this).bitmap(imageUrl)"));
         assertTrue(activity.contains("imageView.setImageBitmap(bitmap)"));
-        assertTrue(activity.contains("button(\"Open Image\") { openHistoryImage(message) }"));
-        assertTrue(activity.contains("button(\"Share Image\") { shareHistoryImage(message) }"));
-        assertTrue(activity.contains("button(\"Save Image\") { saveHistoryImage(message) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Open Image\") { openHistoryImage(message) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Share Image\") { shareHistoryImage(message) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Save Image\") { saveHistoryImage(message) }"));
         assertTrue(activity.contains("private fun openHistoryImage(message: BarkMessage)"));
         assertTrue(activity.contains("Intent(Intent.ACTION_VIEW, Uri.parse(imageUrl))"));
     }

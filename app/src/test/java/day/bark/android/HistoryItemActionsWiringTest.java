@@ -12,10 +12,10 @@ public class HistoryItemActionsWiringTest {
     public void historyItemsExposeCopyOpenAndDeleteActions() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("private fun historyItem(message: BarkMessage, dateFormat: DateFormat): View"));
-        assertTrue(activity.contains("button(\"Copy\") { copyHistoryMessage(message) }"));
-        assertTrue(activity.contains("button(\"Open\") { openHistoryMessage(message) }"));
-        assertTrue(activity.contains("button(\"Delete\") { deleteHistoryMessage(message) }"));
+        assertTrue(activity.contains("private fun HistoryItem(message: BarkMessage, dateFormat: DateFormat)"));
+        assertTrue(activity.contains("SecondaryAction(\"Copy\") { copyHistoryMessage(message) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Open\") { openHistoryMessage(message) }"));
+        assertTrue(activity.contains("SecondaryAction(\"Delete\") { deleteHistoryMessage(message) }"));
         assertTrue(activity.contains("private fun copyHistoryMessage(message: BarkMessage)"));
         assertTrue(activity.contains("BarkCopyText.from(message)"));
         assertTrue(activity.contains("private fun openHistoryMessage(message: BarkMessage)"));

@@ -31,9 +31,9 @@ public class ServerLifecycleWiringTest {
     public void mainActivityExposesProfileRenameResetAndRemoteDelete() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("serverNameInput"));
+        assertTrue(activity.contains("serverNameText"));
         assertTrue(activity.contains("edit(\"Name\")"));
-        assertTrue(activity.contains(".setItems(serverActionLabels(profile))"));
+        assertTrue(activity.contains(".setItems(serverActionLabels())"));
         assertTrue(activity.contains("\"Rename\""));
         assertTrue(activity.contains("\"Register / Reset Key\""));
         assertTrue(activity.contains("renameServer(profile.id)"));
@@ -42,19 +42,18 @@ public class ServerLifecycleWiringTest {
         assertTrue(activity.contains("BarkServerClient(profile.address).unregister(profile.key)"));
         assertTrue(activity.contains("BarkServerClient(profile.address).register(null, settings.installToken)"));
         assertTrue(activity.contains("settings.updateServerKey(profile.id, result.deviceKey)"));
-        assertTrue(activity.contains("settings.renameServer(id, serverNameInput.text.toString()"));
+        assertTrue(activity.contains("settings.renameServer(id, nameInput.text.toString()"));
     }
 
     @Test
     public void serviceTabExposesServerDialogInsteadOfInlineServerEditor() throws Exception {
         String activity = readFile("src/main/java/day/bark/android/MainActivity.kt");
 
-        assertTrue(activity.contains("private enum class MainTab { SERVICE, HISTORY, SETTINGS }"));
-        assertTrue(activity.contains("button(\"Service\") { showTab(MainTab.SERVICE) }"));
-        assertTrue(activity.contains("button(\"History\") { showTab(MainTab.HISTORY) }"));
-        assertTrue(activity.contains("button(\"Settings\") { showTab(MainTab.SETTINGS) }"));
-        assertTrue(activity.contains("private fun buildServiceTab()"));
-        assertTrue(activity.contains("button(\"Servers\") { showServerPicker() }"));
+        assertTrue(activity.contains("private enum class MainTab(val title: String)"));
+        assertTrue(activity.contains("NavigationBar"));
+        assertTrue(activity.contains("MainTab.entries.forEach"));
+        assertTrue(activity.contains("ServiceScreen("));
+        assertTrue(activity.contains("SecondaryAction(\"Servers\") { showServerPicker() }"));
         assertTrue(activity.contains("private fun showServerPicker()"));
         assertTrue(activity.contains("private fun showAddServerDialog()"));
     }
@@ -77,7 +76,7 @@ public class ServerLifecycleWiringTest {
             "}.onFailure { error ->"
         );
 
-        assertTrue(successBlock.contains("keyInput.setText(result.deviceKey)"));
+        assertTrue(successBlock.contains("deviceKeyText = result.deviceKey"));
         assertTrue(successBlock.contains("startPollingService()"));
         assertTrue(successBlock.contains("status(\"Registered and listening\")"));
     }

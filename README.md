@@ -10,7 +10,7 @@ parameter surface and the Android delivery extension used by the paired
   `title`, `subtitle`, `body`, `id`, `markdown`, `sound`, `level`, `volume`,
   `badge`, `call`, `autoCopy`, `copy`, `icon`, `image`, `group`, `isArchive`,
   `ttl`, `url`, `action`, `ciphertext`, `iv`, and `delete`.
-- Supports Bark server profiles, imported push URLs, Basic Auth URLs, batch
+- Supports Bark server profiles, imported push URLs, batch
   target keys, custom sounds, notification groups, history/archive, widgets,
   QR import, Android share targets, and shortcut/broadcast push intents.
 - Receiving push notifications on Android requires a Bark server that includes
