@@ -1,5 +1,9 @@
-Bark Android 0.2.2 adds signed APK updates from bark.atrl.me.
+Bark Android 0.3.0 adds a home for your web projects.
 
-Updates can be checked manually or downloaded and installed automatically on unmetered Wi-Fi. Android may require an installation confirmation. Every APK is checked against the published size and SHA-256, the installed package/version, and the existing signing certificate.
+Open IC 基差 inside the app, or add, edit and reorder your own HTTPS project cards.
+Project pages support back navigation, refresh, loading/error feedback and opening
+in the system browser.
 
-Version 0.2.0 does not include the updater. Install this version manually once to receive later app updates.
+Add the Bark 项目 Android home-screen widget and choose a project for each card.
+Tap a widget to open that project or use 更换 to reconfigure it. The existing
+recent-message widget, Firebase delivery and verified automatic updates remain available.

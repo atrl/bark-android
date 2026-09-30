@@ -4,6 +4,34 @@ Kotlin Android implementation of Bark with compatibility for the Bark push
 parameter surface and the Android delivery extension used by the paired
 `bark-server` build.
 
+## Project home and desktop widgets
+
+Version 0.3.0 opens on **项目 (Projects)**, a home for your web projects alongside
+the existing Service, History and Settings tabs. The initial project is
+**IC 基差**, opening `https://basis.atrl.me/`. Add, edit, reorder or remove project
+cards using their name, HTTPS address and optional description/message group.
+Project settings stay on the device and do not contain Bark receiving credentials.
+
+Project pages open inside a dedicated WebView with back navigation, refresh,
+loading/error feedback and an option to open the system browser. The current
+project's HTTPS origin stays inside the app; links to other origins open in the
+browser. JavaScript and DOM storage support the existing IC dashboard. The app
+does not inject a native JavaScript bridge or bypass certificate errors. Website
+login and data freshness remain the responsibility of the project website.
+
+To add a desktop entry, long-press the Android home screen, choose **Widgets →
+Bark 项目**, and select a project. Add multiple widgets for different projects,
+resize them, or tap **更换** to choose another project. A widget is a native project
+card; tapping it opens the complete project page. It does not fetch live market
+metrics or embed a web page on the desktop. Removing a selected project shows a
+reconfiguration prompt instead of redirecting the widget to another project.
+The existing recent-message/group widget remains available separately.
+
+IC notifications may include the project website as their Bark `url`. This release
+keeps existing notification handling: background FCM taps first open message
+history, where the message URL can be opened. Project and widget navigation are
+independent of notification delivery.
+
 ## Compatibility
 
 - Supports the official Bark push parameters used by upstream Bark examples:

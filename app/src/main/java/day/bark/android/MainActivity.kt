@@ -76,6 +76,7 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private enum class MainTab(val title: String) {
+        PROJECTS("项目"),
         SERVICE("Service"),
         HISTORY("History"),
         SETTINGS("Settings"),
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var settings: BarkSettingsStore
     private lateinit var store: BarkMessageStore
-    private var currentTab by mutableStateOf(MainTab.SERVICE)
+    private var currentTab by mutableStateOf(MainTab.PROJECTS)
     private var statusMessage by mutableStateOf("")
     private var uiVersion by mutableStateOf(0)
     private var selectedHistoryGroups by mutableStateOf<Set<String?>>(emptySet())
@@ -255,6 +256,11 @@ class MainActivity : ComponentActivity() {
                         StatusStrip()
                         val version = uiVersion
                         when (currentTab) {
+                            MainTab.PROJECTS -> day.bark.android.projects.ProjectsScreen(
+                                onProjectsChanged = {
+                                    day.bark.android.projects.widget.BarkProjectWidgetProvider.updateAll(this@MainActivity)
+                                },
+                            )
                             MainTab.SERVICE -> ServiceScreen(version)
                             MainTab.HISTORY -> HistoryScreen(version)
                             MainTab.SETTINGS -> SettingsScreen(version)
@@ -270,7 +276,7 @@ class MainActivity : ComponentActivity() {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Bark", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Self-hosted push control",
+                "我的项目与消息",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

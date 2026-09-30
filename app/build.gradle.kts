@@ -34,8 +34,8 @@ android {
         applicationId = "day.bark.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.2.2"
+        versionCode = 6
+        versionName = "0.3.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", (firebaseConfig != null).toString())
         firebaseConfig?.let { config ->
             @Suppress("UNCHECKED_CAST")
