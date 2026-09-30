@@ -47,6 +47,10 @@ jobs:
           BARK_FIREBASE_CONFIG_JSON: ${{ secrets.BARK_FIREBASE_CONFIG_JSON }}
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]] && [ -z "$BARK_FIREBASE_CONFIG_JSON" ]; then
+            echo "Tagged releases require the Firebase app configuration."
+            exit 1
+          fi
           if [ -n "$BARK_FIREBASE_CONFIG_JSON" ]; then
             umask 077
             printf '%s' "$BARK_FIREBASE_CONFIG_JSON" > "$RUNNER_TEMP/google-services.json"
@@ -79,6 +83,8 @@ jobs:
           manifest = json.loads(Path("app/build/outputs/update-release/stable.json").read_text())
           if os.environ["GITHUB_REF"].startswith("refs/tags/"):
               assert os.environ["GITHUB_REF_NAME"] == "v" + manifest["version_name"], "Release tag must match the APK version"
+              config = json.loads(Path(os.environ["BARK_FIREBASE_CONFIG"]).read_text())
+              assert config["project_info"]["project_id"] == "bark-android-ca57d", "Official updates must retain the production Firebase project"
           PY
 
       - name: Upload verified update bundle
