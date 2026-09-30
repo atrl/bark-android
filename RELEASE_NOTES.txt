@@ -1,11 +1,12 @@
-Bark Android 0.3.1 brings the project home to the automatic update channel.
+Bark Android 0.4.0 brings a lighter project dashboard and data widgets.
 
-Open IC 基差 inside the app, or add, edit and reorder your own HTTPS project cards.
-Project pages support back navigation, refresh, loading/error feedback and opening
-in the system browser.
+The native IC card and desktop widget show annualized discount, historical
+percentile and a compact close-price trend for the selected IC, IM or IF contract.
+Choose a maturity, refresh manually, or tap through to the full project page.
+Data timestamps, missing samples and cached/stale snapshots remain visible.
 
-Add the Bark 项目 Android home-screen widget and choose a project for each card.
-Tap a widget to open that project or use 更换 to reconfigure it. The existing
-recent-message widget, Firebase delivery and verified automatic updates remain available.
-
-This release upgrades both 0.2.2 and the local 0.3.0 validation build.
+The app and widgets share verified disk snapshots, coalesce requests and use
+conditional HTTP updates. Widgets refresh in the background with Android's
+15-minute WorkManager schedule; the system may delay execution.
+The web viewer has a compact toolbar and reuses the most recent page briefly.
+Verified website assets are cached for faster repeat visits and offline use.

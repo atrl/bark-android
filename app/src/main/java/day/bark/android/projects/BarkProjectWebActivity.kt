@@ -4,10 +4,14 @@ package day.bark.android.projects
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Bundle
 import android.view.View
+import android.view.Gravity
+import android.text.TextUtils
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -16,7 +20,10 @@ import android.webkit.WebSettings
 import android.webkit.SslErrorHandler
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.RenderProcessGoneDetail
 import android.widget.Button
+import android.widget.ImageButton
+import android.widget.PopupMenu
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -25,6 +32,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import day.bark.android.R
 
 /** A saved project is the only source of the initial URL and allowed origin. */
 class BarkProjectWebActivity : ComponentActivity() {
@@ -34,6 +42,9 @@ class BarkProjectWebActivity : ComponentActivity() {
     private lateinit var errorPanel: LinearLayout
     private lateinit var errorText: TextView
     private var lastProjectUrl = ""
+    private var reused = false
+    private var pageReady = false
+    private var rendererGone = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,7 +66,10 @@ class BarkProjectWebActivity : ComponentActivity() {
         val stateUrl = savedInstanceState?.getString(LAST_URL)
         val canRestore = savedInstanceState?.getString(PROJECT_URL) == project.url &&
             stateUrl != null && BarkProjectUrl.sameOrigin(project.url, stateUrl)
-        if (canRestore && state != null && webView.restoreState(state) != null) {
+        if (reused) {
+            pageReady = true
+            progress.visibility = View.GONE
+        } else if (canRestore && state != null && webView.restoreState(state) != null) {
             lastProjectUrl = stateUrl!!
         } else {
             webView.loadUrl(project.url)
@@ -63,29 +77,50 @@ class BarkProjectWebActivity : ComponentActivity() {
     }
 
     private fun createContent() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val header = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(4))
-            addView(TextView(this@BarkProjectWebActivity).apply {
-                text = project.name
-                textSize = 20f
-                maxLines = 1
-            })
-            addView(TextView(this@BarkProjectWebActivity).apply {
-                text = BarkProjectUrl.displayOrigin(project.url)
-                textSize = 12f
-                maxLines = 1
-            })
+            setBackgroundColor(Color.rgb(247, 249, 250))
+        }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            addView(iconAction(R.drawable.bark_ic_arrow, "返回") { goBack() }.apply { rotation = 180f })
             addView(LinearLayout(this@BarkProjectWebActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                addView(action("返回") { goBack() })
-                addView(action("刷新") { reload() })
-                addView(action("浏览器") { openBrowser(lastProjectUrl) })
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                addView(TextView(this@BarkProjectWebActivity).apply {
+                    text = project.name
+                    textSize = 16f
+                    setTextColor(Color.rgb(22, 43, 43))
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                })
+                addView(TextView(this@BarkProjectWebActivity).apply {
+                    text = BarkProjectUrl.displayOrigin(project.url)
+                    textSize = 11f
+                    setTextColor(Color.rgb(100, 118, 118))
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                })
             })
+            addView(iconAction(R.drawable.bark_ic_refresh, "刷新网页") { reload() })
+            val menu = iconAction(R.drawable.bark_ic_more, "网页选项") {}
+            menu.setOnClickListener {
+                PopupMenu(this@BarkProjectWebActivity, menu).apply {
+                    this.menu.add("在浏览器中打开").setOnMenuItemClickListener { openBrowser(lastProjectUrl); true }
+                    this.menu.add("返回项目首页").setOnMenuItemClickListener { finish(); true }
+                    show()
+                }
+            }
+            addView(menu)
         }
         root.addView(header)
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
+        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progressTintList = ColorStateList.valueOf(Color.rgb(0, 112, 99))
+        }
         root.addView(progress, LinearLayout.LayoutParams(-1, dp(3)))
         errorText = TextView(this).apply { textSize = 15f }
         errorPanel = LinearLayout(this).apply {
@@ -99,10 +134,13 @@ class BarkProjectWebActivity : ComponentActivity() {
             })
         }
         root.addView(errorPanel)
-        webView = WebView(this)
+        val lease = BarkProjectWebSession.acquire(this, project)
+        webView = lease.view
+        reused = lease.reused
+        lastProjectUrl = lease.lastUrl
         root.addView(webView, LinearLayout.LayoutParams(-1, 0, 1f))
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
@@ -113,6 +151,7 @@ class BarkProjectWebActivity : ComponentActivity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            cacheMode = WebSettings.LOAD_DEFAULT
             allowFileAccess = false
             allowContentAccess = false
             allowFileAccessFromFileURLs = false
@@ -142,6 +181,7 @@ class BarkProjectWebActivity : ComponentActivity() {
             }
 
             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                pageReady = false
                 if (url == null || !BarkProjectUrl.sameOrigin(project.url, url)) {
                     view.stopLoading()
                     showError("无法在项目内打开此网址。")
@@ -154,6 +194,7 @@ class BarkProjectWebActivity : ComponentActivity() {
 
             override fun onPageFinished(view: WebView, url: String?) {
                 progress.visibility = View.GONE
+                pageReady = errorPanel.visibility != View.VISIBLE && url != null && BarkProjectUrl.sameOrigin(project.url, url)
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -172,6 +213,14 @@ class BarkProjectWebActivity : ComponentActivity() {
                     showError("网站证书验证失败，可重试或使用浏览器打开。")
                 }
             }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                rendererGone = true
+                (view.parent as? LinearLayout)?.removeView(view)
+                view.destroy()
+                showError("网页已释放，点击重试重新打开。")
+                return true
+            }
         }
         webView.setDownloadListener { url, _, _, _, _ ->
             if (runCatching { BarkProjectUrl.normalize(url) }.isSuccess) openBrowser(url)
@@ -179,18 +228,25 @@ class BarkProjectWebActivity : ComponentActivity() {
     }
 
     private fun showError(message: String) {
+        pageReady = false
         errorText.text = message
         errorPanel.visibility = View.VISIBLE
         progress.visibility = View.GONE
     }
 
     private fun reload() {
+        if (rendererGone) {
+            val restart = Intent(this, BarkProjectWebActivity::class.java).putExtra(BarkProjectNavigator.EXTRA_PROJECT_ID, project.id)
+            finish()
+            startActivity(restart)
+            return
+        }
         errorPanel.visibility = View.GONE
         webView.loadUrl(lastProjectUrl)
     }
 
     private fun goBack() {
-        if (::webView.isInitialized && webView.canGoBack()) webView.goBack() else finish()
+        if (::webView.isInitialized && !rendererGone && webView.canGoBack()) webView.goBack() else finish()
     }
 
     private fun openBrowser(url: String) {
@@ -198,16 +254,20 @@ class BarkProjectWebActivity : ComponentActivity() {
             .onFailure { Toast.makeText(this, "未找到可打开此网页的浏览器", Toast.LENGTH_LONG).show() }
     }
 
-    private fun action(label: String, callback: () -> Unit): Button = Button(this).apply {
-        text = label
-        layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+    private fun iconAction(icon: Int, label: String, callback: () -> Unit): ImageButton = ImageButton(this).apply {
+        setImageResource(icon)
+        imageTintList = ColorStateList.valueOf(Color.rgb(32, 70, 66))
+        contentDescription = label
+        layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
+        background = null
+        setPadding(dp(13), dp(13), dp(13), dp(13))
         setOnClickListener { callback() }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (::webView.isInitialized) {
+        if (::webView.isInitialized && !rendererGone) {
             val state = Bundle()
             webView.saveState(state)
             outState.putBundle(WEBVIEW_STATE, state)
@@ -218,20 +278,18 @@ class BarkProjectWebActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (::webView.isInitialized) webView.onPause()
+        if (::webView.isInitialized && !rendererGone) webView.onPause()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::webView.isInitialized) webView.onResume()
+        if (::webView.isInitialized && !rendererGone) webView.onResume()
     }
 
     override fun onDestroy() {
-        if (::webView.isInitialized) {
-            webView.stopLoading()
-            (webView.parent as? LinearLayout)?.removeView(webView)
-            webView.destroy()
+        if (::webView.isInitialized && !rendererGone) {
+            BarkProjectWebSession.release(this, project, webView, retain = pageReady && !isChangingConfigurations)
         }
         super.onDestroy()
     }

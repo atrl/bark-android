@@ -9,7 +9,7 @@
     <string name="widget_empty">No Bark messages</string>
     <string name="widget_group_title">Choose widget group</string>
     <string name="project_widget_name">Bark 项目</string>
-    <string name="project_widget_description">将项目放在桌面，轻点打开完整页面。</string>
+    <string name="project_widget_description">查看年化贴水、分位和走势，轻点打开完整页面。</string>
     <string name="project_widget_choose">选择桌面项目</string>
     <string name="project_widget_missing">重新选择项目</string>
     <string name="project_widget_missing_detail">原项目已移除，轻点选择其他项目。</string>

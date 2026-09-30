@@ -45,6 +45,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,9 +79,16 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     private enum class MainTab(val title: String) {
         PROJECTS("项目"),
-        SERVICE("Service"),
-        HISTORY("History"),
-        SETTINGS("Settings"),
+        HISTORY("消息"),
+        SERVICE("推送"),
+        SETTINGS("设置");
+
+        val icon: Int get() = when (this) {
+            PROJECTS -> R.drawable.bark_ic_projects
+            HISTORY -> R.drawable.bark_ic_messages
+            SERVICE -> R.drawable.bark_ic_service
+            SETTINGS -> R.drawable.bark_ic_settings
+        }
     }
 
     private lateinit var settings: BarkSettingsStore
@@ -139,7 +148,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         settings = BarkSettingsStore(this)
         store = BarkMessageStore(this)
-        requestNotificationPermission()
+        if (savedInstanceState == null && Build.VERSION.SDK_INT >= 33) {
+            val uiPreferences = getSharedPreferences("bark_ui", Context.MODE_PRIVATE)
+            if (!uiPreferences.getBoolean("notification_permission_prompted", false)) {
+                uiPreferences.edit().putBoolean("notification_permission_prompted", true).apply()
+                requestNotificationPermission()
+            }
+        }
         loadSettings()
         setContent { BarkApp() }
         refreshServers()
@@ -220,25 +235,16 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun BarkApp() {
-        MaterialTheme(
-            colorScheme = lightColorScheme(
-                primary = Color(0xFF006C5B),
-                secondary = Color(0xFF5964D8),
-                tertiary = Color(0xFFC2410C),
-                background = Color(0xFFF7F8FA),
-                surface = Color(0xFFFFFFFF),
-                surfaceVariant = Color(0xFFE7ECEF),
-            ),
-        ) {
+        day.bark.android.ui.BarkTheme {
             Surface(color = MaterialTheme.colorScheme.background) {
                 Scaffold(
                     bottomBar = {
-                        NavigationBar {
+                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                             MainTab.entries.forEach { tab ->
                                 NavigationBarItem(
                                     selected = currentTab == tab,
                                     onClick = { showTab(tab) },
-                                    icon = { Text(tab.title.first().toString()) },
+                                    icon = { Icon(painterResource(tab.icon), contentDescription = null) },
                                     label = { Text(tab.title) },
                                 )
                             }
@@ -252,13 +258,15 @@ class MainActivity : ComponentActivity() {
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        AppHeader()
+                        if (currentTab != MainTab.PROJECTS) AppHeader()
                         StatusStrip()
                         val version = uiVersion
                         when (currentTab) {
                             MainTab.PROJECTS -> day.bark.android.projects.ProjectsScreen(
                                 onProjectsChanged = {
                                     day.bark.android.projects.widget.BarkProjectWidgetProvider.updateAll(this@MainActivity)
+                                    day.bark.android.projects.data.BasisRefreshScheduler.configure(this@MainActivity,
+                                        day.bark.android.projects.widget.BarkProjectWidgetProvider.configuredFamilies(this@MainActivity))
                                 },
                             )
                             MainTab.SERVICE -> ServiceScreen(version)
@@ -274,9 +282,14 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun AppHeader() {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Bark", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(currentTab.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "我的项目与消息",
+                when (currentTab) {
+                    MainTab.HISTORY -> "每一条提醒，都在这里"
+                    MainTab.SERVICE -> "管理设备连接与消息推送"
+                    MainTab.SETTINGS -> "让 Bark 更适合你的习惯"
+                    MainTab.PROJECTS -> "我的项目与消息"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -311,7 +324,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun ServerCard(profile: BarkServerProfile, serverCount: Int, version: Int) {
-        ElevatedCard(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+        ElevatedCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(profile.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(
@@ -584,7 +597,7 @@ class MainActivity : ComponentActivity() {
     private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
             Column(
@@ -1289,6 +1302,8 @@ class MainActivity : ComponentActivity() {
         trim().takeIf { it.isNotBlank() }?.let { it == "1" || it.equals("true", ignoreCase = true) }
 
     private fun startPollingService() {
+        // An explicit Register / Start Listening action may ask again after denial.
+        requestNotificationPermission()
         saveSettings()
         settings.listeningEnabled = true
         settings.stopPending = false

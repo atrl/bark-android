@@ -12,6 +12,9 @@ class BarkBootReceiver : BroadcastReceiver() {
         }
         day.bark.android.update.BarkUpdateScheduler.schedule(context)
         day.bark.android.update.BarkUpdateInstaller.reconcile(context)
+        day.bark.android.projects.data.BasisRefreshScheduler.configure(
+            context, day.bark.android.projects.widget.BarkProjectWidgetProvider.configuredFamilies(context),
+        )
         if (!BarkSettingsStore(context).listeningEnabled) {
             return
         }
