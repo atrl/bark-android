@@ -59,6 +59,36 @@ jobs:
       - name: Build signed release APK and AAB
         run: ./gradlew --console=plain :app:assembleRelease :app:bundleRelease -x lintVitalAnalyzeRelease
 
+      - name: Check out pinned release verification tool
+        uses: actions/checkout@v4
+        with:
+          repository: atrl/bark-server
+          ref: a14c4970ff1614a2a9d7a5483c7d8b0e570fcfec
+          path: tools/bark-release
+          persist-credentials: false
+
+      - name: Prepare verified automatic update bundle
+        run: |
+          python3 tools/bark-release/deploy/nas/prepare-android-release.py prepare \
+            --apk app/build/outputs/apk/release/app-release.apk \
+            --output-dir app/build/outputs/update-release \
+            --release-notes-file RELEASE_NOTES.txt
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          manifest = json.loads(Path("app/build/outputs/update-release/stable.json").read_text())
+          if os.environ["GITHUB_REF"].startswith("refs/tags/"):
+              assert os.environ["GITHUB_REF_NAME"] == "v" + manifest["version_name"], "Release tag must match the APK version"
+          PY
+
+      - name: Upload verified update bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bark-android-update-release
+          path: app/build/outputs/update-release/*
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
@@ -80,6 +110,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/update-release/*
             app/build/outputs/bundle/release/*.aab
           fail_on_unmatched_files: true

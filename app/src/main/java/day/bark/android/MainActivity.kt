@@ -158,6 +158,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         BarkDeliveryController.restore(this)
+        day.bark.android.update.BarkUpdateScheduler.onForeground(this)
         refreshHistory()
     }
 
@@ -529,6 +530,12 @@ class MainActivity : ComponentActivity() {
                 ActionFlow {
                     PrimaryAction("Save Crypto") { saveSettings() }
                     SecondaryAction("Copy Example") { copyCryptoExample() }
+                }
+            }
+            SectionCard("App updates") {
+                Text("Version ${BuildConfig.VERSION_NAME}")
+                SecondaryAction("Manage updates") {
+                    startActivity(Intent(this@MainActivity, day.bark.android.update.BarkUpdatesActivity::class.java))
                 }
             }
             SectionCard("Info") {

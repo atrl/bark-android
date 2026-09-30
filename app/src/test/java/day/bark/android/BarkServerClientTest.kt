@@ -16,7 +16,7 @@ class BarkServerClientTest {
         server.createContext("/android/sync/device") { exchange ->
             assertEquals("android:test-install", exchange.requestHeaders.getFirst("X-Bark-Device-Token"))
             assertEquals("timeout=0&limit=50", exchange.requestURI.rawQuery)
-            assertEquals("Bark-Android/0.2.0", exchange.requestHeaders.getFirst("User-Agent"))
+            assertEquals("Bark-Android/${BuildConfig.VERSION_NAME}", exchange.requestHeaders.getFirst("User-Agent"))
             assertEquals("application/json", exchange.requestHeaders.getFirst("Accept"))
             val response = """{"code":200,"data":{"messages":[{"delivery_id":"d1","created_at_millis":1234,"payload":{"id":"business","body":"hello"},"fcm_accepted":true,"notification_tag":"bark:hash"}],"more":false}}""".toByteArray()
             exchange.sendResponseHeaders(200, response.size.toLong())

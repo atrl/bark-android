@@ -109,6 +109,63 @@ services, offline FCM, and OEM restrictions remain real delivery limits. A proce
 kill/reboot test on the target phone is required before calling delivery verified.
 Build/tests alone do not demonstrate handset receipt.
 
+## Automatic APK updates (0.2.1 and later)
+
+Open **Settings → App updates → Manage updates** to check, download, install, or
+turn automatic updates off. The app checks at most once per six hours on foreground
+entry and also schedules a daily WorkManager check. Background execution and network
+availability can delay these checks.
+
+Automatic updates are on by default and use **unmetered Wi-Fi** for downloads and
+automatic installation attempts. A manual download may use any connected network.
+Android must first allow Bark to install app updates under its "Install unknown
+apps" setting. The app opens that settings screen only from a user action. When the
+permission is missing, the verified APK stays ready and a notification links to
+Updates. Turning automatic updates off cancels automatic downloads; manual checks,
+downloads and installation remain available.
+
+On Android 12 and later, Bark requests self-update without additional interaction
+when Android permits it. OEM policy, update ownership, developer verification, and
+other system decisions can still require confirmation. The app handles this through
+a notification or the visible Updates screen; it never opens an installer from the
+background. Older Android versions use the system confirmation flow. Disabling
+notification permission can hide the reminder; the pending action remains available
+from Updates.
+
+The update source is fixed to
+`https://bark.atrl.me/android/releases/stable.json`, independently of saved push
+servers. Downloads reject redirects and every other origin. Before downloading or
+installing, the updater enforces the package identity and supported Android version.
+Before installation it verifies the exact byte count and SHA-256, reads actual APK
+metadata with PackageManager, and requires a strictly newer version and the same
+current signing certificate as both this installed app and the pinned release key.
+The system PackageInstaller also verifies the APK signature during installation.
+Debug builds and other signing identities cannot install production updates.
+
+Downloads are written privately to a temporary file, verified, then renamed. A
+cancelled/interrupted download is removed and may be retried. Completed downloads
+remain available offline. Install session ID, release snapshot, nonce and phase are
+persisted: interrupted uncommitted sessions are discarded and retried, while a
+pending Android confirmation can be recovered by reopening Updates and continuing
+the existing session. A newer server manifest cannot replace a pending session's
+release snapshot. The app checks the currently installed version again before commit
+to prevent racing another installer or downgrading.
+
+**One-time migration:** version 0.2.0 has no updater. Install signed 0.2.1 manually
+once; subsequent published releases can follow the update flow above. Installation
+on a real phone still needs to be verified separately from compilation/unit tests.
+
+The release workflow checks out a fixed commit of the server repository's
+`prepare-android-release.py`, which verifies the signed APK and produces one
+immutable bundle: `stable.json`, the versioned APK, and its `.apk.json` sidecar.
+The tag must be `v<version_name>`. These exact CI bytes are uploaded to GitHub Releases
+and mirrored to the NAS; do not publish a different local build under the same
+version code/filename. `RELEASE_NOTES.txt` supplies the notes shown inside the app.
+
+Android API behavior is documented in the official
+[PackageInstaller SessionParams reference](https://developer.android.com/reference/android/content/pm/PackageInstaller.SessionParams#setRequireUserAction(int))
+and [Session reference](https://developer.android.com/reference/android/content/pm/PackageInstaller.Session).
+
 ## GitHub CI
 
 `Android CI` runs on every push and pull request to `main`. It runs the unit
