@@ -67,15 +67,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: atrl/bark-server
-          ref: a14c4970ff1614a2a9d7a5483c7d8b0e570fcfec
+          ref: c0788f97c99aeb4800f553cf45beab8290102503
           path: tools/bark-release
           persist-credentials: false
 
       - name: Prepare verified automatic update bundle
         run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" version
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
           python3 tools/bark-release/deploy/nas/prepare-android-release.py prepare \
             --apk app/build/outputs/apk/release/app-release.apk \
             --output-dir app/build/outputs/update-release \
+            --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" \
             --release-notes-file RELEASE_NOTES.txt
           python3 - <<'PY'
           import json, os

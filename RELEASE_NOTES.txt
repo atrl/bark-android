@@ -1,4 +1,4 @@
-Bark Android 0.2.1 adds signed APK updates from bark.atrl.me.
+Bark Android 0.2.2 adds signed APK updates from bark.atrl.me.
 
 Updates can be checked manually or downloaded and installed automatically on unmetered Wi-Fi. Android may require an installation confirmation. Every APK is checked against the published size and SHA-256, the installed package/version, and the existing signing certificate.
 

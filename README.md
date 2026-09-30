@@ -109,7 +109,7 @@ services, offline FCM, and OEM restrictions remain real delivery limits. A proce
 kill/reboot test on the target phone is required before calling delivery verified.
 Build/tests alone do not demonstrate handset receipt.
 
-## Automatic APK updates (0.2.1 and later)
+## Automatic APK updates (0.2.2 and later)
 
 Open **Settings → App updates → Manage updates** to check, download, install, or
 turn automatic updates off. The app checks at most once per six hours on foreground
@@ -151,7 +151,7 @@ the existing session. A newer server manifest cannot replace a pending session's
 release snapshot. The app checks the currently installed version again before commit
 to prevent racing another installer or downgrading.
 
-**One-time migration:** version 0.2.0 has no updater. Install signed 0.2.1 manually
+**One-time migration:** version 0.2.0 has no updater. Install signed 0.2.2 manually
 once; subsequent published releases can follow the update flow above. Installation
 on a real phone still needs to be verified separately from compilation/unit tests.
 
