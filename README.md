@@ -139,6 +139,17 @@ Build/tests alone do not demonstrate handset receipt.
 
 ## Automatic APK updates (0.2.2 and later)
 
+The project home and project widgets are available on the stable update channel
+starting with **0.3.1 (version code 7)**. This also updates the local 0.3.0
+validation build (version code 6). An update must have a strictly greater version
+code than the installed app.
+
+Pushing to `main` runs debug CI only. To publish an app update, commit the new
+version and release notes, push the matching `v<version_name>` tag, wait for
+**Android Release** to publish its verified GitHub release bundle, and verify
+that the NAS `stable.json` reports that version and exact APK hash. A successful
+debug build or a local signed APK does not update the stable channel.
+
 Open **Settings → App updates → Manage updates** to check, download, install, or
 turn automatic updates off. The app checks at most once per six hours on foreground
 entry and also schedules a daily WorkManager check. Background execution and network

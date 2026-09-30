@@ -1,4 +1,4 @@
-Bark Android 0.3.0 adds a home for your web projects.
+Bark Android 0.3.1 brings the project home to the automatic update channel.
 
 Open IC 基差 inside the app, or add, edit and reorder your own HTTPS project cards.
 Project pages support back navigation, refresh, loading/error feedback and opening
@@ -7,3 +7,5 @@ in the system browser.
 Add the Bark 项目 Android home-screen widget and choose a project for each card.
 Tap a widget to open that project or use 更换 to reconfigure it. The existing
 recent-message widget, Firebase delivery and verified automatic updates remain available.
+
+This release upgrades both 0.2.2 and the local 0.3.0 validation build.
