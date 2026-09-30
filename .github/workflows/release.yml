@@ -42,6 +42,17 @@ jobs:
           printf '%s' "$BARK_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/release.keystore"
           echo "BARK_ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/signing/release.keystore" >> "$GITHUB_ENV"
 
+      - name: Load optional Firebase app configuration
+        env:
+          BARK_FIREBASE_CONFIG_JSON: ${{ secrets.BARK_FIREBASE_CONFIG_JSON }}
+        shell: bash
+        run: |
+          if [ -n "$BARK_FIREBASE_CONFIG_JSON" ]; then
+            umask 077
+            printf '%s' "$BARK_FIREBASE_CONFIG_JSON" > "$RUNNER_TEMP/google-services.json"
+            echo "BARK_FIREBASE_CONFIG=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
+          fi
+
       - name: Run tests
         run: ./gradlew --console=plain :core:test :app:testDebugUnitTest
 

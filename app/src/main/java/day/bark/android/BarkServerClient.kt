@@ -7,7 +7,7 @@ import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 
-class BarkServerClient(private val serverUrl: String) {
+class BarkServerClient(private val serverUrl: String, private val deviceToken: String? = null) {
     private val endpoint = BarkServerEndpoint.from(serverUrl)
 
     fun ping(): Boolean {
@@ -39,7 +39,7 @@ class BarkServerClient(private val serverUrl: String) {
     }
 
     fun unregister(deviceKey: String) {
-        register(deviceKey, "deleted")
+        request("POST", "/register", JSONObject().put("device_key", deviceKey).put("device_token", "deleted"))
     }
 
     fun pushTest(deviceKey: String) {
@@ -96,6 +96,35 @@ class BarkServerClient(private val serverUrl: String) {
         }
     }
 
+    fun setTransport(deviceKey: String, provider: String, token: String? = null, notificationMode: String = "notification"): String? {
+        val body = JSONObject().put("provider", provider).put("notification_mode", notificationMode)
+        token?.let { body.put("token", it) }
+        return request("POST", "/android/transport/$deviceKey", body).optJSONObject("data")?.optString("server_url")?.takeIf { it.isNotBlank() }
+    }
+
+    fun sync(deviceKey: String, timeoutSeconds: Int = 0): BarkSyncPage {
+        val connection = openConnection("/android/sync/$deviceKey?timeout=$timeoutSeconds&limit=50", "GET")
+        return try {
+            if (connection.responseCode == HttpURLConnection.HTTP_NO_CONTENT) return BarkSyncPage(emptyList(), false)
+            val data = readJson(connection).getJSONObject("data")
+            val messages = data.getJSONArray("messages")
+            BarkSyncPage((0 until messages.length()).map { index ->
+                val item = messages.getJSONObject(index)
+                BarkDelivery(
+                    deliveryId = item.getString("delivery_id"),
+                    payload = jsonObjectToMap(item.getJSONObject("payload")),
+                    createdAtMillis = item.getLong("created_at_millis"),
+                    fcmAccepted = item.optBoolean("fcm_accepted", false),
+                    notificationTag = item.optString("notification_tag").takeIf { it.isNotBlank() },
+                )
+            }, data.optBoolean("more", false))
+        } finally { connection.disconnect() }
+    }
+
+    fun acknowledge(deviceKey: String, deliveryIds: List<String>) {
+        request("POST", "/android/ack/$deviceKey", JSONObject().put("delivery_ids", JSONArray(deliveryIds)))
+    }
+
     private fun request(method: String, path: String, body: JSONObject): JSONObject {
         val connection = openConnection(path, method)
         return try {
@@ -114,17 +143,22 @@ class BarkServerClient(private val serverUrl: String) {
         val base = endpoint.baseUrl.trimEnd('/')
         return (URL(base + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
+            setRequestProperty("User-Agent", "Bark-Android/${BuildConfig.VERSION_NAME}")
+            setRequestProperty("Accept", "application/json")
             connectTimeout = 10_000
             readTimeout = 35_000
+            // These credentials are only sent to the configured server, never redirected.
+            instanceFollowRedirects = false
+            deviceToken?.let { setRequestProperty("X-Bark-Device-Token", it) }
         }
     }
 
     private fun readJson(connection: HttpURLConnection): JSONObject {
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+        val text = stream?.let { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).use { reader -> reader.readText() } }.orEmpty()
         if (code !in 200..299) {
-            throw IllegalStateException(text.ifBlank { "HTTP $code" })
+            throw BarkHttpException(code, text.ifBlank { "HTTP $code" })
         }
         return JSONObject(text)
     }
@@ -143,3 +177,7 @@ data class RegistrationResult(
     val deviceKey: String,
     val deviceToken: String,
 )
+
+data class BarkSyncPage(val messages: List<BarkDelivery>, val more: Boolean)
+
+class BarkHttpException(val statusCode: Int, message: String) : IllegalStateException(message)

@@ -10,7 +10,7 @@ import org.junit.Test;
 public class CryptoFailureWiringTest {
     @Test
     public void decryptionFailureNotificationIsNotArchived() throws Exception {
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(service.contains("body = \"Decryption Failed\""));
         assertTrue(service.contains("displayBody = \"Decryption Failed\""));

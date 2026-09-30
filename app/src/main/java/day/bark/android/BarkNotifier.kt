@@ -22,7 +22,7 @@ class BarkNotifier(private val context: Context) {
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val remoteImageCache = BarkRemoteImageCache(context)
 
-    fun show(message: BarkMessage): Boolean {
+    fun show(message: BarkMessage, notificationTag: String? = null, quiet: Boolean = false): Boolean {
         ensureChannels()
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -30,21 +30,21 @@ class BarkNotifier(private val context: Context) {
             return false
         }
 
-        if (message.autoCopy) {
+        if (message.autoCopy && !quiet) {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(
                 ClipData.newPlainText("Bark", message.copy ?: message.displayBody ?: message.body.orEmpty()),
             )
         }
 
-        val builder = Notification.Builder(context, ensureChannelFor(message))
+        val builder = Notification.Builder(context, if (quiet) "bark_catchup" else ensureChannelFor(message))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(message.title ?: context.getString(R.string.app_name))
             .setSubText(message.subtitle?.takeIf { it.isNotBlank() })
             .setContentText(message.displayBody ?: message.body.orEmpty())
             .setStyle(Notification.BigTextStyle().bigText(message.displayBody ?: message.body.orEmpty()))
             .setAutoCancel(BarkTapAction.shouldAttachContentIntent(message))
-            .setOnlyAlertOnce(false)
+            .setOnlyAlertOnce(true)
             .setNumber(message.badge ?: 0)
             .setDeleteIntent(notificationDismissedIntent(message.id))
             .addAction(
@@ -53,6 +53,7 @@ class BarkNotifier(private val context: Context) {
                 copyIntent(message),
             )
         contentIntent(message)?.let(builder::setContentIntent)
+        message.expireAtMillis?.let { expiry -> builder.setTimeoutAfter((expiry - System.currentTimeMillis()).coerceAtLeast(1L)) }
 
         when (message.level?.lowercase()) {
             "passive" -> builder.setPriority(Notification.PRIORITY_LOW)
@@ -80,9 +81,8 @@ class BarkNotifier(private val context: Context) {
             showGroupSummary(group, message)
         }
 
-        val id = message.id.hashCode()
-        notificationManager.notify(id, builder.build())
-        if (message.call) {
+        notificationManager.notify(notificationTag ?: "bark:${message.id}", 0, builder.build())
+        if (message.call && !quiet) {
             BarkCallAlertPlayer.play(context.applicationContext, message)
         }
         return true
@@ -96,15 +96,21 @@ class BarkNotifier(private val context: Context) {
         cancel(messageId, null)
     }
 
-    fun cancel(messageId: String, group: String?) {
+    fun cancel(messageId: String, group: String?, notificationTag: String? = null) {
+        notificationTag?.let(::cancelTag)
+        BarkDeliveredNotificationStore(context).tagsFor(messageId).forEach(::cancelTag)
         notificationManager.cancel(messageId.hashCode())
+        notificationManager.cancel("bark:$messageId", 0)
         cancelGroupSummaryIfLastChild(messageId, group)
     }
 
-    private fun ensureChannels() {
+    fun cancelTag(notificationTag: String) { notificationManager.cancel(notificationTag, 0) }
+
+    fun ensureChannels() {
         if (Build.VERSION.SDK_INT < 26) return
         listOf(
             NotificationChannel(CHANNEL_DEFAULT, "Bark", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel("bark_catchup", "Bark recovered messages", NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null) },
             NotificationChannel(CHANNEL_LOW, "Bark Passive", NotificationManager.IMPORTANCE_LOW),
             NotificationChannel(CHANNEL_HIGH, "Bark Time Sensitive", NotificationManager.IMPORTANCE_HIGH),
         ).forEach(notificationManager::createNotificationChannel)
@@ -248,7 +254,7 @@ class BarkNotifier(private val context: Context) {
     }
 
     private fun showGroupSummary(group: String, message: BarkMessage) {
-        val summary = Notification.Builder(context, ensureChannelFor(message))
+        val summary = Notification.Builder(context, "bark_catchup")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(group)
             .setContentText(context.getString(R.string.app_name))
@@ -269,6 +275,7 @@ class BarkNotifier(private val context: Context) {
         val normalizedGroup = group?.takeIf { it.isNotBlank() } ?: return
         val isLastChild = notificationManager.activeNotifications.none { record ->
             record.id != messageId.hashCode() &&
+                record.tag != "bark:$messageId" &&
                 record.id != groupSummaryId(normalizedGroup) &&
                 record.notification.group == normalizedGroup &&
                 (record.notification.flags and Notification.FLAG_GROUP_SUMMARY) == 0

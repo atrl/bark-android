@@ -9,6 +9,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
@@ -90,6 +91,14 @@ class MainActivity : ComponentActivity() {
     private var historySearchInputText by mutableStateOf("")
     private var pendingQrScan = false
     private var currentSoundPlayer: MediaPlayer? = null
+    private val deliveryStateListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        runOnUiThread {
+            refreshUi()
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                BarkDeliveryController.resumePolling(this)
+            }
+        }
+    }
 
     private var serverUrlText by mutableStateOf("")
     private var deviceKeyText by mutableStateOf("")
@@ -136,6 +145,8 @@ class MainActivity : ComponentActivity() {
         refreshSounds()
         refreshHistory()
         handleIncomingIntent(intent)
+        getSharedPreferences("bark_settings", Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(deliveryStateListener)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -146,11 +157,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        BarkDeliveryController.restore(this)
         refreshHistory()
     }
 
     override fun onDestroy() {
         stopSound()
+        getSharedPreferences("bark_settings", Context.MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(deliveryStateListener)
         super.onDestroy()
     }
 
@@ -301,7 +315,9 @@ class MainActivity : ComponentActivity() {
                     overflow = TextOverflow.Ellipsis,
                 )
                 InfoRow("Key", profile.key.takeIf { it.isNotBlank() }?.let(BarkDeviceTokenText::mask) ?: "Not registered")
-                InfoRow("Listening", if (settings.listeningEnabled) "On" else "Off")
+                InfoRow("Delivery", settings.transportStatus(BarkPollTarget(profile.id, profile.address, profile.key)))
+                InfoRow("Notifications", if (getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled())
+                    "Allowed" else "Blocked in Android settings")
                 InfoRow("Servers", serverCount.toString())
                 Spacer(Modifier.height(2.dp))
                 ActionFlow {
@@ -686,6 +702,7 @@ class MainActivity : ComponentActivity() {
         settings.cryptoPadding = paddingText
         settings.cryptoKey = cryptoKeyText.takeIf { it.isNotBlank() }
         settings.cryptoIv = ivText.takeIf { it.isNotBlank() }
+        if (settings.listeningEnabled) BarkDeliveryController.enqueueSync(this)
         status("Saved")
         refreshServers()
         refreshExamples()
@@ -709,6 +726,7 @@ class MainActivity : ComponentActivity() {
             settings.cryptoPadding = paddingText
             settings.cryptoKey = cryptoKeyText.takeIf { it.isNotBlank() }
             settings.cryptoIv = ivText.takeIf { it.isNotBlank() }
+            if (settings.listeningEnabled) BarkDeliveryController.enqueueSync(this)
             status("Copied crypto example")
         } catch (error: IllegalArgumentException) {
             status(error.message ?: "Invalid crypto settings")
@@ -727,7 +745,7 @@ class MainActivity : ComponentActivity() {
                     deviceKeyText = result.deviceKey
                     refreshExamples()
                     startPollingService()
-                    status("Registered and listening")
+                    status("Registered; configuring delivery")
                 }
             }.onFailure { error ->
                 runOnUiThread { status(error.message ?: "Registration failed") }
@@ -765,9 +783,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun registerProfile(profile: BarkServerProfile): RegistrationResult {
-        val result = BarkServerClient(profile.address)
+        val result = BarkServerClient(profile.address, settings.installToken)
             .register(profile.key.takeIf { it.isNotBlank() }, settings.installToken)
         settings.updateServerKey(profile.id, result.deviceKey)
+        if (settings.listeningEnabled) BarkDeliveryController.enqueueSync(this)
         return result
     }
 
@@ -810,6 +829,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.hasExtra("bark_delivery_id") == true) {
+            // Background FCM already displayed this notification. Sync history
+            // without requesting another local alert, then open the history view.
+            intent.getStringExtra("bark_delivery_id")?.let { id -> BarkInboxStore(this).use { it.markOpened(id) } }
+            BarkDeliveryController.enqueueSync(this)
+            currentTab = MainTab.HISTORY
+            intent.removeExtra("bark_delivery_id")
+        }
         if (intent?.action == ACTION_SHOW_MESSAGE_ALERT) {
             showNotificationAlert(intent)
             intent.setAction(null)
@@ -1132,10 +1159,11 @@ class MainActivity : ComponentActivity() {
         status("Resetting ${profile.address}")
         background {
             if (profile.key.isNotBlank()) {
-                runCatching { BarkServerClient(profile.address).unregister(profile.key) }
+                BarkServerClient(profile.address, settings.installToken).unregister(profile.key)
             }
-            val result = BarkServerClient(profile.address).register(null, settings.installToken)
+            val result = BarkServerClient(profile.address, settings.installToken).register(null, settings.installToken)
             settings.updateServerKey(profile.id, result.deviceKey)
+            if (settings.listeningEnabled) BarkDeliveryController.enqueueSync(this)
             runOnUiThread {
                 if (settings.serverProfiles().currentId == profile.id) {
                     deviceKeyText = result.deviceKey
@@ -1151,7 +1179,7 @@ class MainActivity : ComponentActivity() {
         status("Deleting ${profile.address}")
         background {
             if (profile.key.isNotBlank()) {
-                runCatching { BarkServerClient(profile.address).unregister(profile.key) }
+                BarkServerClient(profile.address, settings.installToken).unregister(profile.key)
             }
             settings.removeServer(profile.id)
             runOnUiThread {
@@ -1250,27 +1278,17 @@ class MainActivity : ComponentActivity() {
     private fun startPollingService() {
         saveSettings()
         settings.listeningEnabled = true
-        try {
-            val intent = Intent(this, BarkPollingService::class.java)
-            if (Build.VERSION.SDK_INT >= 26) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-            refreshServers()
-            status("Listening")
-        } catch (error: Exception) {
-            settings.listeningEnabled = false
-            refreshServers()
-            status(error.message ?: "Failed to start listening")
-        }
+        settings.stopPending = false
+        BarkDeliveryController.restore(this)
+        refreshServers()
+        status("Configuring delivery; see Delivery status")
     }
 
     private fun stopPollingService() {
         settings.listeningEnabled = false
-        startService(Intent(this, BarkPollingService::class.java).setAction(BarkPollingService.ACTION_STOP))
+        BarkDeliveryController.stop(this)
         refreshServers()
-        status("Stopped")
+        status("Stopping delivery; server confirmation may require a connection")
     }
 
     private fun refreshHistory() {

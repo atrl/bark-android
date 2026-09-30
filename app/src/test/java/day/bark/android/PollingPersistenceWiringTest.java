@@ -23,7 +23,7 @@ public class PollingPersistenceWiringTest {
 
         assertTrue(activity.contains("settings.listeningEnabled = true"));
         assertTrue(activity.contains("settings.listeningEnabled = false"));
-        assertTrue(service.contains("settings.listeningEnabled = true"));
+        assertTrue(service.contains("if (!settings.listeningEnabled)"));
         assertTrue(service.contains("settings.listeningEnabled = false"));
     }
 
@@ -41,11 +41,11 @@ public class PollingPersistenceWiringTest {
         assertTrue(receiver.contains("Intent.ACTION_BOOT_COMPLETED"));
         assertTrue(receiver.contains("Intent.ACTION_MY_PACKAGE_REPLACED"));
         assertTrue(receiver.contains("BarkSettingsStore(context).listeningEnabled"));
-        assertTrue(receiver.contains("startForegroundService"));
+        assertTrue(receiver.contains("BarkDeliveryController.restore(context)"));
     }
 
     @Test
-    public void pollingServiceStopsRetryLoopWhenOfficialAndroidTokenIsMissing() throws Exception {
+    public void pollingServiceReportsMissingAndroidRegistration() throws Exception {
         String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
 
         assertTrue(service.contains("isMissingAndroidDeviceToken(error)"));

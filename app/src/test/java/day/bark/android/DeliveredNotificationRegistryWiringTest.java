@@ -10,21 +10,21 @@ import org.junit.Test;
 public class DeliveredNotificationRegistryWiringTest {
     @Test
     public void pollingServiceStoresDeliveredGroupContextOutsideHistoryArchive() throws Exception {
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
-        assertTrue(service.contains("private lateinit var deliveredStore: BarkDeliveredNotificationStore"));
-        assertTrue(service.contains("deliveredStore = BarkDeliveredNotificationStore(this)"));
-        assertTrue(service.contains("if (notifier.show(notificationMessage))"));
-        assertTrue(service.contains("deliveredStore.save(message.id, message.group)"));
+        assertTrue(service.contains("private val deliveredStore = BarkDeliveredNotificationStore(context)"));
+        assertTrue(service.contains("deliveredStore = BarkDeliveredNotificationStore(context)"));
+        assertTrue(service.contains("notifier.show(notificationMessage, notificationTag, quiet ="));
+        assertTrue(service.contains("deliveredStore.save(message.id, message.group, notificationTag)"));
     }
 
     @Test
     public void deletePushFallsBackToDeliveredRegistryBeforeArchivedHistory() throws Exception {
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(service.contains("message.group ?: deliveredStore.groupFor(message.id) ?: store.groupFor(message.id)"));
         assertTrue(service.contains("deliveredStore.delete(message.id)"));
-        assertTrue(service.contains("notifier.cancel(message.id, group)"));
+        assertTrue(service.contains("notifier.cancel(message.id, group, notificationTag)"));
     }
 
     @Test

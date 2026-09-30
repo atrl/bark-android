@@ -15,7 +15,7 @@ public class MultiServerPollingWiringTest {
 
         assertTrue(service.contains("val targets = settings.serverProfiles().pollTargets()"));
         assertTrue(service.contains("for (target in targets)"));
-        assertTrue(service.contains("BarkServerClient(target.address).poll(target.key"));
+        assertTrue(service.contains("BarkSyncEngine(this).sync(target, timeoutSeconds)"));
         assertFalse(service.contains("BarkServerClient(settings.serverUrl).poll(key"));
     }
 
@@ -26,7 +26,7 @@ public class MultiServerPollingWiringTest {
         assertTrue(activity.contains("private fun registerAllServers()"));
         assertTrue(activity.contains("val profiles = settings.serverProfiles()"));
         assertTrue(activity.contains("for (profile in profiles.profiles)"));
-        assertTrue(activity.contains("BarkServerClient(profile.address)"));
+        assertTrue(activity.contains("BarkServerClient(profile.address, settings.installToken)"));
         assertTrue(activity.contains("register(profile.key.takeIf { it.isNotBlank() }, settings.installToken)"));
         assertTrue(activity.contains("settings.updateServerKey(profile.id, result.deviceKey)"));
         assertFalse(activity.contains("BarkServerClient(settings.serverUrl)\n                .register(settings.deviceKey, settings.installToken)"));

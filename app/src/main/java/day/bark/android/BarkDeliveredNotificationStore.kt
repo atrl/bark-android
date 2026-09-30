@@ -7,17 +7,25 @@ class BarkDeliveredNotificationStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     @Synchronized
-    fun save(id: String, group: String?) {
+    fun save(id: String, group: String?, notificationTag: String? = null) {
         val key = id.trim().takeIf { it.isNotBlank() } ?: return
         val groups = groupsJson()
-        groups.put(key, group?.trim()?.takeIf { it.isNotBlank() }.orEmpty())
+        val tags = notificationTag?.let(::listOf) ?: tagsFor(id)
+        groups.put(key, JSONObject().put("group", group?.trim().orEmpty()).put("tags", org.json.JSONArray(tags)))
         prefs.edit().putString(KEY_GROUPS, groups.toString()).apply()
     }
 
     @Synchronized
     fun groupFor(id: String): String? {
         val key = id.trim().takeIf { it.isNotBlank() } ?: return null
-        return groupsJson().optString(key).takeIf { it.isNotBlank() }
+        val groups = groupsJson()
+        return (groups.optJSONObject(key)?.optString("group") ?: groups.optString(key)).takeIf { it.isNotBlank() }
+    }
+
+    @Synchronized
+    fun tagsFor(id: String): List<String> {
+        val tags = groupsJson().optJSONObject(id)?.optJSONArray("tags") ?: return emptyList()
+        return (0 until tags.length()).map { tags.getString(it) }
     }
 
     @Synchronized

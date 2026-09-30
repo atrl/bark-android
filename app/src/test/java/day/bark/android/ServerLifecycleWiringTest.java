@@ -13,7 +13,7 @@ public class ServerLifecycleWiringTest {
         String client = readFile("src/main/java/day/bark/android/BarkServerClient.kt");
 
         assertTrue(client.contains("fun unregister(deviceKey: String)"));
-        assertTrue(client.contains("register(deviceKey, \"deleted\")"));
+        assertTrue(client.contains("request(\"POST\", \"/register\", JSONObject().put(\"device_key\", deviceKey).put(\"device_token\", \"deleted\"))"));
     }
 
     @Test
@@ -39,8 +39,8 @@ public class ServerLifecycleWiringTest {
         assertTrue(activity.contains("renameServer(profile.id)"));
         assertTrue(activity.contains("resetServer(profile)"));
         assertTrue(activity.contains("deleteServer(profile)"));
-        assertTrue(activity.contains("BarkServerClient(profile.address).unregister(profile.key)"));
-        assertTrue(activity.contains("BarkServerClient(profile.address).register(null, settings.installToken)"));
+        assertTrue(activity.contains("BarkServerClient(profile.address, settings.installToken).unregister(profile.key)"));
+        assertTrue(activity.contains("BarkServerClient(profile.address, settings.installToken).register(null, settings.installToken)"));
         assertTrue(activity.contains("settings.updateServerKey(profile.id, result.deviceKey)"));
         assertTrue(activity.contains("settings.renameServer(id, nameInput.text.toString()"));
     }
@@ -59,10 +59,10 @@ public class ServerLifecycleWiringTest {
     }
 
     @Test
-    public void androidDefaultsToOfficialBarkApi() throws Exception {
+    public void androidDefaultsToConfiguredNasServer() throws Exception {
         String settings = readFile("src/main/java/day/bark/android/BarkSettingsStore.kt");
 
-        assertTrue(settings.contains("const val DEFAULT_ANDROID_SERVER = BarkServerProfiles.DEFAULT_ADDRESS"));
+        assertTrue(settings.contains("const val DEFAULT_ANDROID_SERVER = \"https://bark.atrl.me\""));
         assertTrue(settings.contains("private const val LEGACY_EMULATOR_SERVER = \"http://10.0.2.2:8080\""));
         assertTrue(settings.contains("migrateBlankLegacyEmulatorDefault"));
     }
@@ -78,7 +78,7 @@ public class ServerLifecycleWiringTest {
 
         assertTrue(successBlock.contains("deviceKeyText = result.deviceKey"));
         assertTrue(successBlock.contains("startPollingService()"));
-        assertTrue(successBlock.contains("status(\"Registered and listening\")"));
+        assertTrue(successBlock.contains("status(\"Registered; configuring delivery\")"));
     }
 
     @Test

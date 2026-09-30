@@ -11,20 +11,20 @@ public class NotificationGroupCleanupWiringTest {
     @Test
     public void deletePushUsesStoredGroupContextWhenCancellingNotifications() throws Exception {
         String store = readFile("src/main/java/day/bark/android/BarkMessageStore.kt");
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
         String notifier = readFile("src/main/java/day/bark/android/BarkNotifier.kt");
 
         assertTrue(store.contains("fun groupFor(id: String): String?"));
         assertTrue(service.contains("message.group ?: deliveredStore.groupFor(message.id) ?: store.groupFor(message.id)"));
-        assertTrue(service.contains("notifier.cancel(message.id, group)"));
-        assertTrue(notifier.contains("fun cancel(messageId: String, group: String?)"));
+        assertTrue(service.contains("notifier.cancel(message.id, group, notificationTag)"));
+        assertTrue(notifier.contains("fun cancel(messageId: String, group: String?, notificationTag: String? = null)"));
         assertTrue(notifier.contains("cancelGroupSummaryIfLastChild(messageId, group)"));
     }
 
     @Test
     public void ttlCleanupPreservesGroupContextForSummaryCancellation() throws Exception {
         String store = readFile("src/main/java/day/bark/android/BarkMessageStore.kt");
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(store.contains("data class BarkNotificationRef("));
         assertTrue(store.contains("fun deleteExpired(nowMillis: Long = System.currentTimeMillis()): List<BarkNotificationRef>"));
@@ -35,11 +35,11 @@ public class NotificationGroupCleanupWiringTest {
 
     @Test
     public void sameIdGroupMoveCancelsPreviousGroupContextBeforeShowingUpdate() throws Exception {
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(service.contains("val previousGroup = deliveredStore.groupFor(message.id) ?: store.groupFor(message.id)"));
         assertTrue(service.contains("BarkNotificationGroupUpdate.staleGroupToCancel(previousGroup, message.group)"));
-        assertTrue(service.contains("notifier.cancel(message.id, staleGroup)"));
+        assertTrue(service.contains("notifier.cancel(message.id, staleGroup, notificationTag)"));
     }
 
     @Test

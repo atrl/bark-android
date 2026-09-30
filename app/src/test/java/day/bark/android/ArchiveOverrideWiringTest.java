@@ -11,7 +11,7 @@ import org.junit.Test;
 public class ArchiveOverrideWiringTest {
     @Test
     public void pollingServiceUsesArchivePolicyInsteadOfAndingGlobalSetting() throws Exception {
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(service.contains("BarkArchivePolicy.shouldStore(message, settings.archiveEnabled)"));
         assertFalse(service.contains("settings.archiveEnabled && message.shouldArchive"));

@@ -28,6 +28,52 @@ class BarkSettingsStore(context: Context) {
         get() = prefs.getBoolean("listening_enabled", false)
         set(value) = prefs.edit().putBoolean("listening_enabled", value).apply()
 
+    var fcmToken: String?
+        get() = prefs.getString("fcm_token", null)
+        set(value) { check(prefs.edit().putString("fcm_token", value).commit()) }
+
+    var stopPending: Boolean
+        get() = prefs.getBoolean("transport_stop_pending", false)
+        set(value) { prefs.edit().putBoolean("transport_stop_pending", value).apply() }
+
+    private fun transportKey(target: BarkPollTarget): String = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(BarkSyncEngine.source(target).toByteArray()).joinToString("") { "%02x".format(it) }
+
+    fun isFcmRegistered(target: BarkPollTarget): Boolean =
+        !fcmToken.isNullOrBlank() && prefs.getString("fcm_bound_${transportKey(target)}", null) == fcmToken
+
+    fun markFcmRegistered(target: BarkPollTarget, token: String, canonicalUrl: String?) {
+        check(prefs.edit().putString("fcm_bound_${transportKey(target)}", token)
+            .putString("transport_status_${transportKey(target)}", "FCM registered with server")
+            .putString("canonical_server_${transportKey(target)}", canonicalUrl).commit())
+    }
+
+    fun canonicalServer(target: BarkPollTarget): String = prefs.getString("canonical_server_${transportKey(target)}", null)
+        ?.trimEnd('/') ?: target.address.trimEnd('/')
+
+    fun notificationMode(): String = if (!cryptoKey.isNullOrBlank() || prefs.all.any { (key, value) ->
+        key.startsWith(GROUP_MUTE_PREFIX) && (value as? Long ?: 0L) > System.currentTimeMillis()
+    }) "data" else "notification"
+
+    fun markPolling(target: BarkPollTarget, status: String) {
+        check(prefs.edit().remove("fcm_bound_${transportKey(target)}")
+            .putString("transport_status_${transportKey(target)}", status).commit())
+    }
+
+    fun setTransportStatus(target: BarkPollTarget, status: String) {
+        prefs.edit().putString("transport_status_${transportKey(target)}", status).apply()
+    }
+
+    fun transportStatus(target: BarkPollTarget): String {
+        if (!listeningEnabled) return if (stopPending) "Stopping; server confirmation pending" else "Off"
+        val detail = prefs.getString("transport_status_${transportKey(target)}", "Configuring delivery").orEmpty()
+        if (isFcmRegistered(target)) {
+            if (detail != "FCM registered with server") return "FCM registration retained · $detail"
+            return if (notificationMode() == "data") "FCM registered · local handling" else "FCM registered · system notifications"
+        }
+        return if (BarkPollingService.isRunning) "Polling service running · $detail" else "Polling paused · $detail"
+    }
+
     var cryptoAlgorithm: String
         get() = prefs.getString("crypto_algorithm", "AES128") ?: "AES128"
         set(value) = prefs.edit().putString("crypto_algorithm", value).apply()
@@ -162,6 +208,7 @@ class BarkSettingsStore(context: Context) {
     ): Long {
         val untilMillis = nowMillis + durationMillis
         prefs.edit().putLong(groupMuteKey(group), untilMillis).apply()
+        if (listeningEnabled) BarkDeliveryController.enqueueSync(appContext)
         return untilMillis
     }
 
@@ -179,7 +226,7 @@ class BarkSettingsStore(context: Context) {
     private fun groupMuteKey(group: String): String = "$GROUP_MUTE_PREFIX$group"
 
     companion object {
-        const val DEFAULT_ANDROID_SERVER = BarkServerProfiles.DEFAULT_ADDRESS
+        const val DEFAULT_ANDROID_SERVER = "https://bark.atrl.me"
         private const val LEGACY_EMULATOR_SERVER = "http://10.0.2.2:8080"
         const val GROUP_MUTE_DURATION_MILLIS = 60L * 60L * 1000L
         private const val GROUP_MUTE_PREFIX = "group_mute_until_"

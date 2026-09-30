@@ -9,3 +9,8 @@ local.properties
 captures/
 *.apk
 *.aab
+
+# Local Firebase app config and server credentials
+google-services.json
+**/google-services.json
+*service-account*.json

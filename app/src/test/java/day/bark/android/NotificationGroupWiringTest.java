@@ -27,7 +27,7 @@ public class NotificationGroupWiringTest {
     public void defaultGroupNotificationsExposeMuteActionWithoutAndroidGroupSummary() throws Exception {
         String notifier = readFile("src/main/java/day/bark/android/BarkNotifier.kt");
         String receiver = readFile("src/main/java/day/bark/android/BarkNotificationActionReceiver.kt");
-        String service = readFile("src/main/java/day/bark/android/BarkPollingService.kt");
+        String service = readFile("src/main/java/day/bark/android/BarkMessageReceiver.kt");
 
         assertTrue(notifier.contains("val muteGroup = BarkGroupMutePolicy.groupKey(message.group)"));
         assertTrue(notifier.contains("muteGroupIntent(muteGroup)"));
