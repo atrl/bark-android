@@ -6,7 +6,7 @@ parameter surface and the Android delivery extension used by the paired
 
 ## Project home and desktop widgets
 
-Version 0.4.0 opens on **项目 (Projects)** with a native financial dashboard,
+Version 0.4.1 opens on **项目 (Projects)** with a native financial dashboard,
 alongside **消息 / 推送 / 设置**. The initial **IC 基差** card shows annualized
 discount, historical percentile and the selected real contract's recent daily
 closes. Choose IC, IM or IF and an explicit maturity; absent maturities stay
@@ -46,8 +46,18 @@ the same `annualized_carry_pct` formula and percentile metric; graphs preserve
 each real contract and gaps and are labeled as daily closes.
 
 Widgets use a 15-minute WorkManager schedule while data widgets exist; Android
-can delay background work. They always display the absolute source time and
-offer manual refresh. The foreground card revalidates every minute and updates
+can delay background work. Transient connection failures and HTTP 408/425/429/5xx
+responses retry at most three times, with a minimum one-minute exponential
+backoff (nominally 1, 2 and 4 minutes), before waiting for the next periodic or
+manual refresh. This delay clears the shared cache's one-minute cooldown.
+Permanent HTTP and data-validation failures do not automatically retry; valid
+responses with stale source data do not trigger retries either. Existing periodic
+work adopts the retry policy when the app starts after an update.
+Widgets label live-source values as sampled snapshots and always display their
+absolute source time after **截至**; they do not promise continuously live prices.
+An initial connection failure displays **连接失败**, while a connection failure
+with saved data displays **离线缓存** and keeps the original quote time. Manual
+refresh remains available. The foreground card revalidates every minute and updates
 its age label without a network request. Expired live quotes, old closes,
 insufficient samples and offline cache remain explicitly distinguishable.
 

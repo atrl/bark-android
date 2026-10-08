@@ -105,10 +105,14 @@ data class BasisSnapshot(
     }
 }
 
+enum class BasisRefreshFailure { CONNECTION, DATA, STORAGE }
+
 data class BasisCacheState(
     val snapshot: BasisSnapshot? = null,
     val checkedAtMillis: Long = 0,
     val receivedAtMillis: Long = 0,
     val refreshing: Boolean = false,
     val error: String? = null,
+    val failure: BasisRefreshFailure? = null,
+    val retryableError: Boolean = false,
 )

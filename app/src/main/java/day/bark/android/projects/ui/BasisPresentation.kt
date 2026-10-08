@@ -2,6 +2,7 @@ package day.bark.android.projects.ui
 
 import day.bark.android.projects.data.BasisCacheState
 import day.bark.android.projects.data.BasisContract
+import day.bark.android.projects.data.BasisRefreshFailure
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -32,8 +33,10 @@ object BasisPresentation {
     }
 
     fun stateLabel(state: BasisCacheState, contract: BasisContract?, nowMillis: Long = System.currentTimeMillis()): String = when {
-        state.error != null && state.snapshot != null -> "缓存"
         state.refreshing -> "更新中"
+        state.error != null && state.failure == BasisRefreshFailure.CONNECTION ->
+            if (state.snapshot == null) "连接失败" else "离线缓存"
+        state.error != null -> if (state.snapshot == null) "更新失败" else "缓存 · 更新失败"
         contract == null -> "等待数据"
         contract.liveQuoteExpired(nowMillis) -> "待更新"
         contract.kind == "close" && closeExpired(contract.dataDate, nowMillis) -> "待更新"
@@ -41,6 +44,11 @@ object BasisPresentation {
         contract.kind == "close" -> "收盘"
         contract.kind == "live" -> "采样快照"
         else -> "已保存"
+    }
+
+    fun widgetTimestamp(state: BasisCacheState, contract: BasisContract?): String {
+        val time = timestamp(state, contract)
+        return if (time == "等待首次数据") time else "截至 $time"
     }
 
     private fun closeExpired(date: String, nowMillis: Long): Boolean = runCatching {

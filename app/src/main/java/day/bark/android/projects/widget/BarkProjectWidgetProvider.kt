@@ -190,7 +190,8 @@ class BarkProjectWidgetProvider : AppWidgetProvider() {
                         if (contract?.annualizedDiscount?.isFinite() == true) "%" else "")
                     setTextViewText(R.id.project_widget_percentile, "分位 ${BasisPresentation.percentile(contract)}")
                     val status = BasisPresentation.stateLabel(state, contract)
-                    val timestamp = BasisPresentation.timestamp(state, contract)
+                    // RemoteViews remain visible between updates; never imply continuously live data.
+                    val timestamp = BasisPresentation.widgetTimestamp(state, contract)
                     setTextViewText(R.id.project_widget_asof, if (compact) "$status\n$timestamp" else "$status · $timestamp")
                     setInt(R.id.project_widget_asof, "setMaxLines", if (compact) 2 else 1)
                     setTextViewTextSize(R.id.project_widget_title, TypedValue.COMPLEX_UNIT_SP, if (compact) 12f else 14f)

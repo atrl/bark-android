@@ -3,6 +3,7 @@ package day.bark.android.projects.ui
 import day.bark.android.projects.data.BasisCacheState
 import day.bark.android.projects.data.BasisContract
 import day.bark.android.projects.data.BasisSnapshot
+import day.bark.android.projects.data.BasisRefreshFailure
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -38,10 +39,12 @@ class BasisPresentationTest {
     }
 
     @Test fun displayingCachedDataNeverReplacesItsAbsoluteQuoteTime() {
-        val state = BasisCacheState(snapshot = snapshot, receivedAtMillis = 9_999_999L, error = "network unavailable")
+        val state = BasisCacheState(snapshot = snapshot, receivedAtMillis = 9_999_999L, error = "network unavailable",
+            failure = BasisRefreshFailure.CONNECTION, retryableError = true)
         assertEquals("2026-09-30 15:00:00", BasisPresentation.timestamp(state, contract))
-        assertEquals("缓存", BasisPresentation.stateLabel(state, contract))
+        assertEquals("离线缓存", BasisPresentation.stateLabel(state, contract))
         assertEquals("2026-09-30", BasisPresentation.timestamp(state, null))
+        assertEquals("截至 2026-09-30 15:00:00", BasisPresentation.widgetTimestamp(state, contract))
     }
 
     @Test fun expiredLiveQuotesAreIdentifiedWithoutClaimingFreshness() {
@@ -58,5 +61,17 @@ class BasisPresentationTest {
         assertEquals("待更新", BasisPresentation.stateLabel(state, contract, now))
         assertEquals("收盘", BasisPresentation.stateLabel(state, contract, now - 86_400_000))
         assertEquals("2026-09-30 15:00:00", BasisPresentation.timestamp(state, contract))
+    }
+
+    @Test fun firstConnectionFailureAndInvalidDataHaveDistinctLabels() {
+        val disconnected = BasisCacheState(error = "network unavailable", failure = BasisRefreshFailure.CONNECTION,
+            retryableError = true)
+        assertEquals("连接失败", BasisPresentation.stateLabel(disconnected, null))
+        assertEquals("等待首次数据", BasisPresentation.widgetTimestamp(disconnected, null))
+        assertEquals("更新中", BasisPresentation.stateLabel(disconnected.copy(refreshing = true), null))
+        assertEquals("等待数据", BasisPresentation.stateLabel(BasisCacheState(), null))
+        val invalid = disconnected.copy(failure = BasisRefreshFailure.DATA, retryableError = false)
+        assertEquals("更新失败", BasisPresentation.stateLabel(invalid, null))
+        assertEquals("缓存 · 更新失败", BasisPresentation.stateLabel(invalid.copy(snapshot = snapshot), contract))
     }
 }

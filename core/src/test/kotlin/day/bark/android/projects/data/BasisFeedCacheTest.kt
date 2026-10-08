@@ -158,4 +158,59 @@ class BasisFeedCacheTest {
         assertTrue(contract.liveQuoteExpired(time + 121_000))
         assertTrue(contract.liveQuoteExpired(time - 6_000))
     }
+
+    @Test fun automaticRetryAfterOneMinuteFetchesAgainAnd304ClearsConnectionFailure() {
+        var clock = 1_800_000_000_000L
+        var response = BasisFeedResponse(200, fixture(), "\"v1\"")
+        var calls = 0
+        val cache = BasisFeedCache(directory.root, BasisFeedTransport { _, _ ->
+            calls++
+            response
+        }) { clock }
+        val before = cache.refresh("IC")
+        clock += 60_000
+        response = BasisFeedResponse(503)
+        val failed = cache.refresh("IC")
+        assertTrue(failed.retryableError)
+        assertEquals(BasisRefreshFailure.CONNECTION, failed.failure)
+        assertEquals(before.snapshot, failed.snapshot)
+        clock += 59_999
+        response = BasisFeedResponse(304)
+        assertTrue(cache.refresh("IC").retryableError)
+        assertEquals(2, calls)
+        clock++
+        val recovered = cache.refresh("IC")
+        assertEquals(3, calls)
+        assertNull(recovered.error)
+        assertNull(recovered.failure)
+        assertFalse(recovered.retryableError)
+        assertEquals(before.snapshot, recovered.snapshot)
+        assertEquals(before.receivedAtMillis, recovered.receivedAtMillis)
+    }
+
+    @Test fun retryOnlyTransientTransportFailuresAndPreserveFailureCause() {
+        for (status in listOf(408, 425, 429, 500, 503)) {
+            val cache = BasisFeedCache(directory.newFolder(), BasisFeedTransport { _, _ -> BasisFeedResponse(status) })
+            assertTrue(cache.refresh("IC").retryableError, "HTTP $status should retry")
+        }
+        for (status in listOf(301, 400, 401, 403, 404)) {
+            val cache = BasisFeedCache(directory.newFolder(), BasisFeedTransport { _, _ -> BasisFeedResponse(status) })
+            val result = cache.refresh("IC")
+            assertFalse(result.retryableError, "HTTP $status must not retry automatically")
+            assertEquals(BasisRefreshFailure.CONNECTION, result.failure)
+        }
+        val offline = BasisFeedCache(directory.newFolder(), BasisFeedTransport { _, _ -> throw IOException("offline") })
+            .refresh("IC")
+        assertTrue(offline.retryableError)
+        assertEquals(BasisRefreshFailure.CONNECTION, offline.failure)
+        val malformed = BasisFeedCache(directory.newFolder(), BasisFeedTransport { _, _ -> BasisFeedResponse(200, "{") })
+            .refresh("IC")
+        assertFalse(malformed.retryableError)
+        assertEquals(BasisRefreshFailure.DATA, malformed.failure)
+        val staleBody = fixture().replace("\"status\":\"ok\"", "\"status\":\"needs_data\"")
+        val stale = BasisFeedCache(directory.newFolder(), BasisFeedTransport { _, _ -> BasisFeedResponse(200, staleBody) })
+            .refresh("IC")
+        assertNull(stale.error)
+        assertFalse(stale.retryableError)
+    }
 }

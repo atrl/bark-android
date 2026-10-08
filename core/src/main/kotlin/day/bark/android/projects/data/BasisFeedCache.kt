@@ -5,6 +5,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONObject
+import org.json.JSONException
 
 data class BasisFeedResponse(val status: Int, val body: String? = null, val etag: String? = null)
 fun interface BasisFeedTransport { fun fetch(family: String, etag: String?): BasisFeedResponse }
@@ -17,6 +18,7 @@ class BasisFeedCache(
 ) {
     private data class Record(val body: String, val etag: String?, val state: BasisCacheState)
     private class DataUnavailable : IOException()
+    private class RequestFailed(val retryable: Boolean) : IOException()
     private val records = ConcurrentHashMap<String, Record>()
     private val locks = ConcurrentHashMap<String, Any>()
     private val attempts = ConcurrentHashMap<String, Long>()
@@ -33,7 +35,11 @@ class BasisFeedCache(
         }
         attempts[family] = now
         try {
-            val response = transport.fetch(family, current?.etag)
+            val response = try {
+                transport.fetch(family, current?.etag)
+            } catch (_: IOException) {
+                throw RequestFailed(retryable = true)
+            }
             val verifiedAt = clock()
             val next = when (response.status) {
                 200 -> {
@@ -46,9 +52,10 @@ class BasisFeedCache(
                 }
                 304 -> {
                     require(current != null && current.etag != null) { "No validated snapshot for 304" }
-                    current.copy(state = current.state.copy(checkedAtMillis = verifiedAt, error = null))
+                    current.copy(state = current.state.copy(checkedAtMillis = verifiedAt, error = null,
+                        failure = null, retryableError = false))
                 }
-                else -> throw IOException("Summary request failed")
+                else -> throw RequestFailed(response.status in setOf(408, 425, 429) || response.status in 500..599)
             }
             write(family, next)
             records[family] = next
@@ -57,9 +64,16 @@ class BasisFeedCache(
             val state = (current?.state ?: BasisCacheState()).copy(
                 error = when (error) {
                     is DataUnavailable -> "数据暂不可用，保留上次快照"
-                    is IllegalArgumentException -> "数据校验失败，保留上次快照"
-                    else -> "连接暂不可用，显示已保存数据"
+                    is IllegalArgumentException, is JSONException -> "数据校验失败，保留上次快照"
+                    is RequestFailed -> "连接暂不可用，显示已保存数据"
+                    else -> "快照保存失败，保留上次数据"
                 },
+                failure = when (error) {
+                    is RequestFailed -> BasisRefreshFailure.CONNECTION
+                    is DataUnavailable, is IllegalArgumentException, is JSONException -> BasisRefreshFailure.DATA
+                    else -> BasisRefreshFailure.STORAGE
+                },
+                retryableError = error is RequestFailed && error.retryable,
             )
             // Keep even an empty failure in memory so concurrent widget taps share the same backoff.
             records[family] = current?.copy(state = state) ?: Record("", null, state)

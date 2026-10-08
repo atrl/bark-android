@@ -1,12 +1,11 @@
-Bark Android 0.4.0 brings a lighter project dashboard and data widgets.
+Bark Android 0.4.1 improves basis widget connection recovery.
 
-The native IC card and desktop widget show annualized discount, historical
-percentile and a compact close-price trend for the selected IC, IM or IF contract.
-Choose a maturity, refresh manually, or tap through to the full project page.
-Data timestamps, missing samples and cached/stale snapshots remain visible.
+Temporary connection and server failures now retry automatically up to three
+times, with exponential delays starting at one minute. The regular 15-minute
+background schedule and manual refresh remain available. Android may delay work.
+Valid responses containing old market data do not trigger repeated requests.
 
-The app and widgets share verified disk snapshots, coalesce requests and use
-conditional HTTP updates. Widgets refresh in the background with Android's
-15-minute WorkManager schedule; the system may delay execution.
-The web viewer has a compact toolbar and reuses the most recent page briefly.
-Verified website assets are cached for faster repeat visits and offline use.
+Widgets distinguish an initial connection failure from an offline saved snapshot.
+Each quote keeps its original source time, explicitly labeled as an as-of time;
+sampled prices are not presented as continuously live data. Invalid responses
+retain the last verified snapshot and show an update failure separately.
