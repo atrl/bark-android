@@ -116,7 +116,11 @@ class BasisFeedCache(
             if (old.annualizedDiscount == null) return@forEachIndexed
             val oldTime = sourceTime(old) ?: return@forEachIndexed
             val newTime = sourceTime(next)
-            if (newTime == null || newTime >= oldTime) return@forEachIndexed
+            // The official close is authoritative for that day even when its fixed
+            // 15:00 timestamp precedes a collector's last sample by a few seconds.
+            val officialClose = next.kind == "close" && next.annualizedDiscount != null &&
+                next.dataDate == old.dataDate && old.kind in setOf("live", "sampled")
+            if (officialClose || (newTime != null && newTime >= oldTime)) return@forEachIndexed
             val row = rows.getJSONObject(index)
             val saved = savedByCode.getValue(next.code)
             for (key in listOf("kind", "date", "quote_time", "dte", "near_expiry", BasisSnapshot.METRIC)) {

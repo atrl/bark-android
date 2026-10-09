@@ -201,6 +201,7 @@ class BasisFeedCacheTest {
     @Test fun equalSourceTimeAcceptsSessionStateAndNewerFormalCloseReplacesSample() {
         var clock = 1_800_000_000_000L
         var body = fixture().replace("\"kind\":\"close\"", "\"kind\":\"live\"")
+            .replace("2026-09-30T15:00:00", "2026-09-30T15:00:21")
         val cache = BasisFeedCache(directory.root, BasisFeedTransport { _, _ -> BasisFeedResponse(200, body) }) { clock }
         cache.refresh("IC")
         clock += 61_000
@@ -210,8 +211,40 @@ class BasisFeedCacheTest {
         assertEquals("sampled", closed.kind)
         assertEquals("closed", closed.freshness)
         clock += 61_000
-        body = fixture().replace("2026-09-30T15:00:00", "2026-09-30T15:01:00")
-        assertEquals("close", cache.refresh("IC").snapshot!!.contracts.single().kind)
+        body = fixture().replace("0.081", "0.082")
+        val official = cache.refresh("IC").snapshot!!.contracts.single()
+        assertEquals("close", official.kind)
+        assertEquals("2026-09-30T15:00:00+08:00", official.quoteTime)
+        assertEquals(0.082, official.annualizedDiscount)
+        assertEquals("close", official.freshness)
+    }
+
+    @Test fun missingQuoteCannotEraseOneMaturityWhileOtherMaturitiesStillUpdate() {
+        var clock = 1_800_000_000_000L
+        var body = fixture().replace("\"kind\":\"close\"", "\"kind\":\"live\"")
+        val cache = BasisFeedCache(directory.root, BasisFeedTransport { _, _ -> BasisFeedResponse(200, body) }) { clock }
+        cache.refresh("IC")
+        clock += 61_000
+        val missing = JSONObject(fixture())
+        missing.getJSONArray("contracts").getJSONObject(0).apply {
+            put("kind", "missing").put("date", "").put("quote_time", "")
+            put("annualized_carry_pct", JSONObject.NULL)
+            getJSONArray("series").getJSONObject(0).put("annualized_carry_pct", 0.071)
+        }
+        val other = JSONObject(JSONObject(fixture()).getJSONArray("contracts").getJSONObject(0).toString()
+            .replace("IC2611.CFX", "IC2612.CFX").replace("2026-11-20", "2026-12-18"))
+            .put("tenor", "quarter").put("annualized_carry_pct", 0.093)
+        missing.getJSONArray("contracts").put(other)
+        body = missing.toString()
+        val result = cache.refresh("IC")
+        assertNull(result.error)
+        val retained = result.snapshot!!.contracts.first()
+        assertEquals(0.081, retained.annualizedDiscount)
+        assertEquals("2026-09-30T15:00:00+08:00", retained.quoteTime)
+        assertEquals("sampled", retained.kind)
+        assertEquals("stale", retained.freshness)
+        assertEquals(0.071, retained.points.first().value)
+        assertEquals(0.093, result.snapshot!!.contracts.last().annualizedDiscount)
     }
 
     @Test fun newContractAtRollNeverInheritsAnOldContractQuote() {
