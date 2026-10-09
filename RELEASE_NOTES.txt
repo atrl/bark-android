@@ -1,11 +1,11 @@
-Bark Android 0.4.1 improves basis widget connection recovery.
+Bark Android 0.4.2 expands the desktop basis widget.
 
-Temporary connection and server failures now retry automatically up to three
-times, with exponential delays starting at one minute. The regular 15-minute
-background schedule and manual refresh remain available. Android may delay work.
-Valid responses containing old market data do not trigger repeated requests.
+Standard widgets show all four maturities together, each with its own annualized
+basis and same-contract historical closing curve. Small widgets retain two
+maturities (front month plus the preferred maturity) and show a 2/4 indicator.
+Larger widgets also show historical percentiles and each quote status.
 
-Widgets distinguish an initial connection failure from an offline saved snapshot.
-Each quote keeps its original source time, explicitly labeled as an as-of time;
-sampled prices are not presented as continuously live data. Invalid responses
-retain the last verified snapshot and show an update failure separately.
+The footer preserves source dates, identifies historical closing curves, and
+reports the oldest displayed quote time when maturities differ. Missing history,
+missing quotes, offline cache and stale quotes stay explicit. Refresh scheduling
+and bounded connection retries are unchanged.

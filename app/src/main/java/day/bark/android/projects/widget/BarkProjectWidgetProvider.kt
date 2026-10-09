@@ -146,7 +146,7 @@ class BarkProjectWidgetProvider : AppWidgetProvider() {
             manager.updateAppWidget(widgetId, views)
         }
 
-        private data class WidgetData(
+        internal data class WidgetData(
             val project: BarkProject?,
             val family: String,
             val tenor: String,
@@ -156,13 +156,14 @@ class BarkProjectWidgetProvider : AppWidgetProvider() {
             val refresh: PendingIntent,
         )
 
-        private fun renderViews(context: Context, data: WidgetData, width: Int, height: Int, bitmapPixelBudget: Long): RemoteViews {
+        internal fun renderViews(context: Context, data: WidgetData, width: Int, height: Int, bitmapPixelBudget: Long): RemoteViews {
             val project = data.project
             val state = data.state
             val native = state != null
-            val compact = height < 165 || width < 220
+            val layout = BasisWidgetLayout.forSize(width, height, data.tenor)
+            val compact = !layout.detailed
             val views = RemoteViews(context.packageName, R.layout.bark_project_widget).apply {
-                val padding = ((if (compact) 10 else 14) * context.resources.displayMetrics.density).toInt()
+                val padding = ((if (compact) 6 else 12) * context.resources.displayMetrics.density).toInt()
                 setViewPadding(R.id.project_widget_root, padding, padding, padding, padding)
                 setTextViewText(R.id.project_widget_title, project?.name ?: context.getString(R.string.project_widget_missing))
                 setTextViewText(R.id.project_widget_host, project?.url?.let { Uri.parse(it).host } ?: "Bark")
@@ -181,39 +182,55 @@ class BarkProjectWidgetProvider : AppWidgetProvider() {
                 setOnClickPendingIntent(R.id.project_widget_configure, data.configure)
             }
             if (state != null) {
-                val contract = BasisPresentation.selected(state, data.tenor)
-                val points = contract?.points.orEmpty().takeLast(24)
+                val contracts = layout.tenors.map { BasisPresentation.selected(state, it) }
+                val now = System.currentTimeMillis()
                 views.apply {
-                    setTextViewText(R.id.project_widget_title, "${data.family} · ${BasisPresentation.tenors.getValue(data.tenor)}")
-                    setTextViewText(R.id.project_widget_contract, contract?.code ?: "该期限等待数据")
-                    setTextViewText(R.id.project_widget_value, BasisPresentation.annualized(contract) +
-                        if (contract?.annualizedDiscount?.isFinite() == true) "%" else "")
-                    setTextViewText(R.id.project_widget_percentile, "分位 ${BasisPresentation.percentile(contract)}")
-                    val status = BasisPresentation.stateLabel(state, contract)
-                    // RemoteViews remain visible between updates; never imply continuously live data.
-                    val timestamp = BasisPresentation.widgetTimestamp(state, contract)
-                    setTextViewText(R.id.project_widget_asof, if (compact) "$status\n$timestamp" else "$status · $timestamp")
-                    setInt(R.id.project_widget_asof, "setMaxLines", if (compact) 2 else 1)
-                    setTextViewTextSize(R.id.project_widget_title, TypedValue.COMPLEX_UNIT_SP, if (compact) 12f else 14f)
-                    setTextViewTextSize(R.id.project_widget_value, TypedValue.COMPLEX_UNIT_SP, if (compact) 19f else 27f)
-                    setTextViewTextSize(R.id.project_widget_percentile, TypedValue.COMPLEX_UNIT_SP, if (compact) 10f else 13f)
-                    setTextViewTextSize(R.id.project_widget_asof, TypedValue.COMPLEX_UNIT_SP, if (compact) 8f else 9f)
-                    val pointCount = points.count { it.value?.isFinite() == true }
-                    setTextViewText(R.id.project_widget_chart_label, if (pointCount > 0) "近${pointCount}个收盘 · 同一合约" else "收盘走势待更新")
-                    setContentDescription(R.id.project_widget_chart, "同一合约近${pointCount}个收盘的年化贴水走势，数据缺口处断开")
-                    setViewVisibility(R.id.project_widget_chart_container, if (!compact) View.VISIBLE else View.GONE)
-                    setViewVisibility(R.id.project_widget_contract, if (!compact) View.VISIBLE else View.GONE)
-                    if (!compact) {
-                        val density = context.resources.displayMetrics.density
-                        // Render near the actual chart's physical pixel size, not a tiny
-                        // fixed-height image that the launcher would stretch on large widgets.
-                        val chartWidth = ((width - 28).coerceAtLeast(100) * density).toInt().coerceIn(280, 960)
-                        val chartHeight = ((height - 140).coerceAtLeast(24) * density).toInt().coerceIn(100, 700)
-                        // All responsive variants count toward Android's RemoteViews
-                        // bitmap allowance. Keep their combined pixels within one screen.
-                        val scale = sqrt(bitmapPixelBudget.coerceAtLeast(1).toDouble() / (chartWidth * chartHeight)).coerceAtMost(1.0)
-                        setImageViewBitmap(R.id.project_widget_chart, BasisSparklineRenderer.bitmap(points,
-                            (chartWidth * scale).toInt().coerceAtLeast(1), (chartHeight * scale).toInt().coerceAtLeast(1)))
+                    setTextViewText(R.id.project_widget_title, if (layout.tenors.size < 4)
+                        "${data.family} 年化2/4" else "${data.family} · 年化贴水")
+                    setTextViewTextSize(R.id.project_widget_title, TypedValue.COMPLEX_UNIT_SP, if (width < 220) 10f else 12f)
+                    // Use the oldest visible source time; one fresh contract must not
+                    // make older or unavailable contracts appear current.
+                    setTextViewText(R.id.project_widget_asof,
+                        "${BasisWidgetLayout.status(state, contracts, now)} · 曲线为收盘\n${BasisWidgetLayout.timestamp(state, contracts)}")
+                    setContentDescription(R.id.project_widget_asof,
+                        "${BasisWidgetLayout.status(state, contracts, now)}；${BasisWidgetLayout.timestamp(state, contracts)}；曲线仅含各真实合约的历史收盘，不含盘中报价")
+                    removeAllViews(R.id.project_widget_row_one)
+                    removeAllViews(R.id.project_widget_row_two)
+                    setViewVisibility(R.id.project_widget_row_two, if (layout.rows == 2) View.VISIBLE else View.GONE)
+                    layout.tenors.forEachIndexed { index, tenor ->
+                        val contract = contracts[index]
+                        val points = contract?.points.orEmpty().takeLast(24)
+                        val pointCount = points.count { it.value?.isFinite() == true }
+                        val label = BasisPresentation.tenors.getValue(tenor)
+                        val code = contract?.code?.removeSuffix(".CFX") ?: "待数据"
+                        val stateLabel = BasisPresentation.stateLabel(state, contract, now)
+                        val value = BasisPresentation.annualized(contract) +
+                            if (contract?.annualizedDiscount?.isFinite() == true) "%" else ""
+                        val cell = RemoteViews(context.packageName, R.layout.bark_project_widget_contract).apply {
+                            setTextViewText(R.id.project_widget_contract, "$label $code")
+                            setTextViewText(R.id.project_widget_value, value)
+                            setTextColor(R.id.project_widget_value, if (tenor == data.tenor) 0xFF087F70.toInt() else 0xFF172B2A.toInt())
+                            setTextViewText(R.id.project_widget_percentile, "分位 ${BasisPresentation.percentile(contract)} · $stateLabel")
+                            setViewVisibility(R.id.project_widget_percentile, if (layout.detailed) View.VISIBLE else View.GONE)
+                            setViewVisibility(R.id.project_widget_chart, if (pointCount > 0) View.VISIBLE else View.GONE)
+                            setViewVisibility(R.id.project_widget_chart_empty, if (pointCount == 0) View.VISIBLE else View.GONE)
+                            setContentDescription(R.id.project_widget_contract_cell,
+                                "$label $code，年化贴水 $value，分位 ${BasisPresentation.percentile(contract)}，$stateLabel，${BasisPresentation.widgetTimestamp(state, contract)}")
+                            setContentDescription(R.id.project_widget_chart,
+                                "$code 同一合约近${pointCount}个收盘的年化贴水走势，截至 ${points.lastOrNull()?.date ?: "未知"}，数据缺口处断开")
+                            if (pointCount > 0) {
+                                val density = context.resources.displayMetrics.density
+                                val chartWidth = ((width / 2 - 18).coerceAtLeast(40) * density).toInt().coerceIn(100, 640)
+                                val chartHeight = (((height - 68) / layout.rows - if (layout.detailed) 48 else 34)
+                                    .coerceAtLeast(10) * density).toInt().coerceIn(24, 500)
+                                // Responsive variants and all four curves share Android's bitmap allowance.
+                                val perChartBudget = bitmapPixelBudget / layout.tenors.size
+                                val scale = sqrt(perChartBudget.coerceAtLeast(1).toDouble() / (chartWidth * chartHeight)).coerceAtMost(1.0)
+                                setImageViewBitmap(R.id.project_widget_chart, BasisSparklineRenderer.bitmap(points,
+                                    (chartWidth * scale).toInt().coerceAtLeast(1), (chartHeight * scale).toInt().coerceAtLeast(1)))
+                            }
+                        }
+                        addView(if (index < 2) R.id.project_widget_row_one else R.id.project_widget_row_two, cell)
                     }
                     setOnClickPendingIntent(R.id.project_widget_refresh, data.refresh)
                 }

@@ -106,13 +106,13 @@ class BarkProjectWidgetConfigureActivity : ComponentActivity() {
                             }
                         }
                     }
-                    Text("合约期限", style = MaterialTheme.typography.titleMedium)
+                    Text("关注期限", style = MaterialTheme.typography.titleMedium)
                     BasisPresentation.tenors.forEach { (key, label) ->
                         val contract = cached.snapshot?.contracts?.firstOrNull { it.tenor == key }
                         Choice(label, contract?.let { "${it.code} · ${it.expiry} 到期" } ?: "暂无缓存，保存后获取数据",
                             tenor == key) { tenor = key }
                     }
-                    Text("始终展示选定期限对应的真实合约；缺少数据时显示等待，不替换成其他期限。", fontSize = 11.sp, color = BarkPalette.Muted)
+                    Text("常规尺寸同时展示近月、次月、季月、远季和各自收盘曲线。小尺寸优先展示近月与关注期限；缺少数据的期限显示等待。", fontSize = 11.sp, color = BarkPalette.Muted)
                 }
                 Button(onClick = { selected?.let { selectProject(it.id, family, tenor) } }, enabled = selected != null,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Text("保存到桌面") }

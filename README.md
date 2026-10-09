@@ -6,7 +6,7 @@ parameter surface and the Android delivery extension used by the paired
 
 ## Project home and desktop widgets
 
-Version 0.4.1 opens on **项目 (Projects)** with a native financial dashboard,
+Version 0.4.2 opens on **项目 (Projects)** with a native financial dashboard,
 alongside **消息 / 推送 / 设置**. The initial **IC 基差** card shows annualized
 discount, historical percentile and the selected real contract's recent daily
 closes. Choose IC, IM or IF and an explicit maturity; absent maturities stay
@@ -27,9 +27,13 @@ site's verified immutable cache. Refresh still revalidates the page and data;
 there is no unrestricted request interception or forced stale network cache.
 
 To add a desktop entry, long-press the Android home screen, choose **Widgets →
-Bark 项目**, and select a project, family and maturity. IC widgets display annualized
-discount, percentile and a compact daily-close chart; larger sizes show more
-detail. The refresh icon requests an update and the settings icon reconfigures
+Bark 项目**, and select a project, family and preferred maturity. At 220 × 160 dp
+and above, basis widgets show all four maturities in a 2 × 2 grid, each with its
+own annualized discount and same-contract daily-close curve. Smaller widgets
+retain two maturities (front plus the preferred maturity, or next if front is
+preferred), show **2/4**, and keep both curves. Larger widgets add percentile and
+per-contract status. Missing maturities stay missing; the footer uses the oldest
+visible source time and marks mixed stale/missing data. The refresh icon requests an update and the settings icon reconfigures
 the widget. Tapping the card opens the full website. Other web projects retain
 their shortcut card. Removing a selected project shows a
 reconfiguration prompt instead of redirecting the widget to another project.

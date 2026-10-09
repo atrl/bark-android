@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/project_widget_contract_cell" android:layout_width="0dp" android:layout_height="match_parent"
+    android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="3dp" android:paddingBottom="3dp">
+    <TextView android:id="@+id/project_widget_contract" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#526B62" android:textSize="9sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+    <TextView android:id="@+id/project_widget_value" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="—" android:textColor="#172B2A" android:textSize="18sp" android:textStyle="bold"
+        android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="12sp" android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp" android:includeFontPadding="false" />
+    <ImageView android:id="@+id/project_widget_chart" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:minHeight="10dp" android:scaleType="fitXY" android:contentDescription="同一合约收盘年化贴水走势" />
+    <TextView android:id="@+id/project_widget_chart_empty" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:gravity="center_vertical" android:text="收盘走势待更新" android:textSize="8sp" android:textColor="#748580" />
+    <TextView android:id="@+id/project_widget_percentile" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#748580" android:textSize="9sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+</LinearLayout>
