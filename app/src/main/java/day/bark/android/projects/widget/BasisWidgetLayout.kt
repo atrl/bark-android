@@ -24,7 +24,7 @@ data class BasisWidgetLayout(val tenors: List<String>, val detailed: Boolean) {
             val labels = contracts.map { BasisPresentation.stateLabel(state, it, nowMillis) }.distinct()
             return when {
                 labels.size == 1 -> labels.first()
-                labels.any { it == "待更新" || it == "等待数据" } -> "部分待更新"
+                labels.any { it == "待更新" || it == "等待数据" || it == "行情延迟" } -> "部分待更新"
                 else -> "混合快照"
             }
         }

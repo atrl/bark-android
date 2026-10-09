@@ -50,9 +50,22 @@ class BasisPresentationTest {
     @Test fun expiredLiveQuotesAreIdentifiedWithoutClaimingFreshness() {
         val live = contract.copy(kind = "live", quoteTime = "2026-09-30T07:00:00Z")
         val quoteMillis = java.time.Instant.parse(live.quoteTime).toEpochMilli()
-        assertEquals("待更新", BasisPresentation.stateLabel(BasisCacheState(snapshot = snapshot), live, quoteMillis + 120_001))
-        assertEquals("待更新", BasisPresentation.stateLabel(BasisCacheState(snapshot = snapshot), live, quoteMillis - 5_001))
+        assertEquals("行情延迟", BasisPresentation.stateLabel(BasisCacheState(snapshot = snapshot), live, quoteMillis + 120_001))
+        assertEquals("行情延迟", BasisPresentation.stateLabel(BasisCacheState(snapshot = snapshot), live, quoteMillis - 5_001))
         assertEquals("采样快照", BasisPresentation.stateLabel(BasisCacheState(snapshot = snapshot), live, quoteMillis + 60_000))
+    }
+
+    @Test fun sampledQuotesKeepTimeAndDistinguishDelayLunchAndMarketClose() {
+        val state = BasisCacheState(snapshot = snapshot.copy(freshness = "stale"))
+        val sampled = contract.copy(kind = "sampled", freshness = "stale")
+        assertEquals("行情延迟", BasisPresentation.stateLabel(state, sampled))
+        assertEquals("午休采样", BasisPresentation.stateLabel(state, sampled.copy(freshness = "paused")))
+        assertEquals("已收盘采样", BasisPresentation.stateLabel(state, sampled.copy(freshness = "closed")))
+        assertEquals("截至 2026-09-30 15:00:00", BasisPresentation.widgetTimestamp(state, sampled))
+        assertEquals("8.42", BasisPresentation.annualized(sampled))
+        val live = sampled.copy(kind = "live", freshness = "live")
+        val time = java.time.OffsetDateTime.parse(live.quoteTime).toInstant().toEpochMilli()
+        assertEquals("采样快照", BasisPresentation.stateLabel(state, live, time + 60_000))
     }
 
     @Test fun oldDailyCloseUsesSourceDateDespiteARecentCacheCheck() {

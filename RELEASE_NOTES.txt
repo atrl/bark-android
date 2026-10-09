@@ -1,11 +1,4 @@
-Bark Android 0.4.2 expands the desktop basis widget.
-
-Standard widgets show all four maturities together, each with its own annualized
-basis and same-contract historical closing curve. Small widgets retain two
-maturities (front month plus the preferred maturity) and show a 2/4 indicator.
-Larger widgets also show historical percentiles and each quote status.
-
-The footer preserves source dates, identifies historical closing curves, and
-reports the oldest displayed quote time when maturities differ. Missing history,
-missing quotes, offline cache and stale quotes stay explicit. Refresh scheduling
-and bounded connection retries are unchanged.
+基差行情显示修复：
+- 今日最后有效采样区分行情延迟、午休和已收盘，保留真实“截至”时间。
+- 较早的服务端响应不再覆盖较新的同一合约报价；其他合约和收盘曲线继续更新。
+- 保留四合约及曲线布局，桌面仍可手动刷新，后台按 Android 允许的周期刷新。

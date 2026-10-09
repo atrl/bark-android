@@ -6,7 +6,7 @@ parameter surface and the Android delivery extension used by the paired
 
 ## Project home and desktop widgets
 
-Version 0.4.2 opens on **项目 (Projects)** with a native financial dashboard,
+Version 0.4.3 opens on **项目 (Projects)** with a native financial dashboard,
 alongside **消息 / 推送 / 设置**. The initial **IC 基差** card shows annualized
 discount, historical percentile and the selected real contract's recent daily
 closes. Choose IC, IM or IF and an explicit maturity; absent maturities stay
@@ -64,6 +64,12 @@ with saved data displays **离线缓存** and keeps the original quote time. Man
 refresh remains available. The foreground card revalidates every minute and updates
 its age label without a network request. Expired live quotes, old closes,
 insufficient samples and offline cache remain explicitly distinguishable.
+Same-day retained quotes identify **行情延迟**, **午休采样** or **已收盘采样**;
+the last label describes the session, not an official closing quote. The absolute
+**截至** time stays visible, and the curves remain daily closes. An older successful
+API response cannot replace a newer quote for the same real contract: the newer
+value is retained and marked delayed, while updated history and other maturities
+are accepted. Its percentile is withheld until a matching quote is available.
 
 IC notifications may include the project website as their Bark `url`. This release
 keeps existing notification handling: background FCM taps first open message
